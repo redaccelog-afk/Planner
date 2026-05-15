@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "strict": true,
+    "outDir": "dist",
+    "rootDir": ".",
+    "paths": {
+      "@ccelog/db": ["../packages/db/src/index.ts"],
+      "@ccelog/shared": ["../packages/shared/src/index.ts"]
+    }
+  },
+  "include": ["."]
+}

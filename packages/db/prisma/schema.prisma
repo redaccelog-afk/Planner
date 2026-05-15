@@ -1,0 +1,1120 @@
+// CCE LOG — Planification des formations
+// Prisma Schema complet — v2
+// Timezone : Africa/Casablanca (UTC+1 hiver / UTC+1 été — pas de changement d'heure)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum IntakeChannel {
+  EMAIL
+  WHATSAPP
+  SMS
+  TELEGRAM
+}
+
+enum PipelineStatus {
+  RECEIVED            // message brut reçu
+  PARSING             // IA extraction en cours
+  PARSED              // IA terminée — en attente validation planner
+  TRAINER_SELECTION   // planner valide l'ordre des formateurs
+  CONTACTING_TRAINER  // WA envoyé, attente réponse formateur
+  WAITING_PLANNER     // formateur a répondu, planner confirme les dates
+  WAITING_CLIENT      // planner a confirmé, client doit valider
+  CLIENT_CONFIRMED    // client a validé → session en cours de création
+  COMPLETED           // session créée et confirmée
+  FAILED              // tous les formateurs épuisés ou délai dépassé
+  CANCELLED           // annulé manuellement
+}
+
+enum Role {
+  ADMIN
+  PLANIFICATEUR
+  FORMATEUR
+  COMPTABILITE
+  LECTEUR
+}
+
+enum TrainerType {
+  INTERNE   // salarié CCE LOG
+  EXTERNE   // formateur indépendant / prestataire
+}
+
+enum PreselectionStatus {
+  CANDIDAT
+  EN_EVALUATION
+  ACCEPTE
+  REFUSE
+}
+
+enum NegotiationStatus {
+  EN_COURS
+  ACCEPTEE
+  REFUSEE
+  EXPIREE
+}
+
+enum FrameworkStatus {
+  ACTIF
+  EXPIRE
+  RESILIE
+}
+
+enum PrestationStatus {
+  BROUILLON
+  BON_COMMANDE_EMIS
+  BON_COMMANDE_ACCEPTE
+  FACTURE_RECUE
+  VALIDE
+  PAYE
+  LITIGE
+}
+
+enum InvoiceStatus {
+  BROUILLON
+  EMISE
+  ENVOYEE_CLIENT
+  PAYEE
+  EN_RETARD
+  ANNULEE
+}
+
+enum Category {
+  CACES
+  VR
+  SECURITE
+  SECOURISME
+  AUTRE
+}
+
+enum RequestStatus {
+  NOUVELLE
+  EN_RECHERCHE
+  PROPOSEE
+  CONFIRMEE
+  ANNULEE
+  CLOTUREE
+}
+
+enum SessionStatus {
+  PROVISOIRE
+  CONFIRMEE
+  ANNULEE
+}
+
+enum AvailabilityStatus {
+  DISPONIBLE
+  OCCUPE
+  TENTATIF
+}
+
+enum BookingStatus {
+  A_RESERVER
+  RESERVE
+  CONFIRME
+  ANNULE
+}
+
+enum MaterialStatus {
+  DISPONIBLE
+  ASSIGNE
+  MAINTENANCE
+  RETIRE
+}
+
+enum DocumentType {
+  CONVOCATION
+  LISTE_PRESENCE
+  EVALUATION
+  TEST
+  RAPPORT
+  CERTIFICAT
+  BON_SORTIE_MATERIEL
+  VOUCHER_HOTEL
+}
+
+enum DocumentStatus {
+  A_PREPARER
+  PRET
+  REMIS_FORMATEUR
+  RECUPERE
+  VALIDE
+  ENVOYE_CLIENT
+}
+
+enum ReportStatus {
+  ATTENDU
+  RECU
+  CORRIGE
+  ENVOYE_CLIENT
+}
+
+enum Direction {
+  ENTRANT
+  SORTANT
+}
+
+enum NotificationType {
+  CONFIRMATION_CLIENT_DEMANDEE   // J-7
+  RAPPEL_FORMATEUR               // J-3
+  DOCUMENTS_PRETS                // J-2
+  RAPPEL_HOTEL_ITINERAIRE        // J-1
+  DEMANDE_RAPPORT                // J+1
+  RELANCE_RAPPORT                // J+3
+  ENVOI_RAPPORT_CLIENT           // J+7
+  ALERTE_STOCK
+  // ── v2 billing / negotiation ──
+  FACTURE_EMISE                  // invoice sent to client
+  RELANCE_PAIEMENT_J30           // J+30 after invoice
+  RELANCE_PAIEMENT_J45           // J+45
+  RELANCE_PAIEMENT_J60           // J+60
+  BON_COMMANDE_EXTERNE           // PO sent to external trainer
+  NEGOCIATION_EXPIREE            // negotiation validity expired
+  CONVENTION_EXPIREE             // framework contract expiring
+  AUTRE
+}
+
+enum NotificationStatus {
+  EN_ATTENTE
+  ENVOYEE
+  ECHOUEE
+  ANNULEE
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  SEND_EMAIL
+  SEND_WHATSAPP
+  CONFIRM
+  CANCEL
+  UPLOAD
+  INVOICE_EMIT
+  INVOICE_PAY
+  PO_EMIT
+  PO_VALIDATE
+  NEGOTIATE
+}
+
+// ─────────────────────────────────────────────
+// AUTHENTIFICATION (NextAuth v5)
+// ─────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  role          Role      @default(LECTEUR)
+  accounts      Account[]
+  sessions      Session_Auth[]
+  auditLogs     AuditLog[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session_Auth {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("auth_sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ─────────────────────────────────────────────
+// RÉFÉRENTIELS
+// ─────────────────────────────────────────────
+
+model Trainer {
+  id             String           @id @default(cuid())
+  type           TrainerType      @default(EXTERNE)
+  fullName       String
+  phone          String           // numéro WhatsApp (+212...)
+  email          String?
+  city           String
+  address        String?
+  latitude       Float?
+  longitude      Float?
+  active         Boolean          @default(true)
+  notes          String?          @db.Text
+  magicLinkToken String?          @unique
+  magicLinkExpiry DateTime?
+
+  // ── Champs INTERNE uniquement ──────────────────
+  employeeId     String?          // matricule RH
+  employerCost   Float?           // coût employeur journalier (MAD)
+
+  // ── Champs EXTERNE uniquement ──────────────────
+  legalStatus    String?          // "Auto-entrepreneur", "SARL", "Personne physique"...
+  ice            String?          // Identifiant Commun de l'Entreprise
+  rc             String?          // Registre de Commerce
+  ifFiscal       String?          // Identifiant Fiscal
+  cnss           String?          // N° CNSS
+  iban           String?
+  bankName       String?
+  defaultDayRate Float?           // tarif journalier par défaut (MAD)
+  paymentTerms   Int?             @default(30) // jours de paiement
+
+  themes         TrainerTheme[]
+  rates          TrainerRate[]
+  availabilities Availability[]
+  sessions       TrainingSession[]
+  whatsappThreads WhatsAppThread[]
+  distanceCache  DistanceCache[]  @relation("TrainerDistances")
+  preselections    Preselection[]
+  frameworks       Framework[]
+  prestations      Prestation[]
+  negotiations     NegotiationStep[]
+  pipelineCandidates TrainerCandidate[]
+
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@map("trainers")
+}
+
+model Theme {
+  id            String          @id @default(cuid())
+  code          String          @unique  // ex. "CACES_R489"
+  label         String          // ex. "CACES R489 — Chariots élévateurs"
+  category      Category
+  durationDays  Int             @default(1)
+  description   String?         @db.Text
+  active        Boolean         @default(true)
+
+  consumableNeeds ConsumableNeed[]
+  materialNeeds   MaterialNeed[]
+  trainers        TrainerTheme[]
+  sessions        TrainingSession[]
+  requestThemes   RequestTheme[]
+  negotiations    NegotiationStep[]
+
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@map("themes")
+}
+
+model TrainerTheme {
+  trainerId     String
+  themeId       String
+  ratePerDay    Float?          // tarif journalier spécifique (sinon TrainerRate par défaut)
+  certified     Boolean         @default(true)
+  certifiedUntil DateTime?
+
+  trainer       Trainer         @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+  theme         Theme           @relation(fields: [themeId], references: [id], onDelete: Cascade)
+
+  @@id([trainerId, themeId])
+  @@map("trainer_themes")
+}
+
+model TrainerRate {
+  id            String    @id @default(cuid())
+  trainerId     String
+  ratePerDay    Float     // tarif journalier MAD
+  validFrom     DateTime  @default(now())
+  validUntil    DateTime?
+  trainer       Trainer   @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+
+  @@map("trainer_rates")
+}
+
+model Client {
+  id            String          @id @default(cuid())
+  name          String
+  normalizedName String          // pour matching fuzzy
+  active        Boolean         @default(true)
+  notes         String?         @db.Text
+
+  contacts      ClientContact[]
+  sites         ClientSite[]
+  requests      TrainingRequest[]
+  emailThreads  EmailThread[]
+  invoices      Invoice[]
+
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@map("clients")
+}
+
+model ClientContact {
+  id        String  @id @default(cuid())
+  clientId  String
+  name      String
+  email     String?
+  phone     String?
+  role      String? // "Responsable formation", "DRH"...
+  primary   Boolean @default(false)
+  client    Client  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("client_contacts")
+}
+
+model ClientSite {
+  id        String   @id @default(cuid())
+  clientId  String
+  label     String   // ex. "HUTCHINSON BOUSKOURA"
+  address   String
+  city      String
+  latitude  Float?
+  longitude Float?
+  active    Boolean  @default(true)
+
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  requests  TrainingRequest[]
+  distanceCache DistanceCache[] @relation("SiteDistances")
+
+  @@map("client_sites")
+}
+
+model Hotel {
+  id        String   @id @default(cuid())
+  name      String
+  city      String
+  address   String?
+  phone     String?
+  email     String?
+  priceMin  Float?   // prix chambre nuit (MAD)
+  priceMax  Float?
+  active    Boolean  @default(true)
+  notes     String?  @db.Text
+
+  bookings  HotelBooking[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("hotels")
+}
+
+model Material {
+  id          String          @id @default(cuid())
+  label       String
+  category    String          // "VR", "Extincteur", "Projecteur"...
+  serial      String?
+  status      MaterialStatus  @default(DISPONIBLE)
+  notes       String?
+
+  assignments MaterialAssignment[]
+  needs       MaterialNeed[]
+
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@map("materials")
+}
+
+model MaterialNeed {
+  themeId   String
+  materialId String
+  quantity  Int    @default(1)
+  required  Boolean @default(true)
+
+  theme     Theme    @relation(fields: [themeId], references: [id], onDelete: Cascade)
+  material  Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  @@id([themeId, materialId])
+  @@map("material_needs")
+}
+
+model Consumable {
+  id          String         @id @default(cuid())
+  label       String         // "Stylo CCE LOG", "Bloc-notes A4"...
+  unit        String         @default("pièce")
+  stockQty    Int            @default(0)
+  reorderAt   Int            @default(10)
+  unitCost    Float?         // coût unitaire MAD
+
+  needs       ConsumableNeed[]
+  movements   StockMovement[]
+  usages      ConsumableUsage[]
+
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@map("consumables")
+}
+
+model ConsumableNeed {
+  themeId      String
+  consumableId String
+  qtyPerParticipant Float @default(1) // qté par participant
+
+  theme        Theme      @relation(fields: [themeId], references: [id], onDelete: Cascade)
+  consumable   Consumable @relation(fields: [consumableId], references: [id], onDelete: Cascade)
+
+  @@id([themeId, consumableId])
+  @@map("consumable_needs")
+}
+
+// ─────────────────────────────────────────────
+// DEMANDES & SESSIONS
+// ─────────────────────────────────────────────
+
+model TrainingRequest {
+  id               String         @id @default(cuid())
+  clientId         String
+  siteId           String
+  participants     Int
+  desiredDateFrom  DateTime?
+  desiredDateTo    DateTime?
+  status           RequestStatus  @default(NOUVELLE)
+  urgency          Int            @default(0)  // 0-3
+  emailSourceId    String?        // ID message Outlook
+  emailThreadId    String?
+  rawEmailBody     String?        @db.Text
+  aiExtracted      Json?          // résultat brut extraction IA
+  notes            String?        @db.Text
+
+  client           Client         @relation(fields: [clientId], references: [id])
+  site             ClientSite     @relation(fields: [siteId], references: [id])
+  themes           RequestTheme[]
+  sessions         TrainingSession[]
+  emailThread      EmailThread?   @relation(fields: [emailThreadId], references: [id])
+
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@map("training_requests")
+}
+
+model RequestTheme {
+  requestId String
+  themeId   String
+
+  request   TrainingRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  theme     Theme           @relation(fields: [themeId], references: [id])
+
+  @@id([requestId, themeId])
+  @@map("request_themes")
+}
+
+model TrainingSession {
+  id              String          @id @default(cuid())
+  requestId       String
+  trainerId       String
+  themeId         String
+  startDate       DateTime
+  endDate         DateTime
+  location        String?         // lieu de formation (complément)
+  status          SessionStatus   @default(PROVISOIRE)
+  outlookEventId  String?         @db.Text  // AAMkAD... long ID Outlook
+  totalCost       Float?          // coût total calculé (MAD)
+  costBreakdown   Json?           // {honoraires, transport, hotel, perDiem, consommables}
+  trainerConfirmed Boolean        @default(false)
+  clientConfirmed  Boolean        @default(false)
+  notes           String?         @db.Text
+
+  request         TrainingRequest  @relation(fields: [requestId], references: [id])
+  trainer         Trainer          @relation(fields: [trainerId], references: [id])
+  theme           Theme            @relation(fields: [themeId], references: [id])
+  hotelBooking    HotelBooking?
+  documents       Document[]
+  consumables     ConsumableUsage[]
+  materials       MaterialAssignment[]
+  report          TrainingReport?
+  whatsappThreads WhatsAppThread[]
+  notifications   Notification[]
+  prestation      Prestation?
+  invoiceLines    InvoiceLine[]
+
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@map("training_sessions")
+}
+
+model Availability {
+  id        String             @id @default(cuid())
+  trainerId String
+  date      DateTime           // jour (heure 00:00 Casablanca)
+  status    AvailabilityStatus @default(DISPONIBLE)
+  source    String             @default("manual") // "outlook" | "whatsapp" | "manual"
+  notes     String?
+
+  trainer   Trainer            @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+
+  @@unique([trainerId, date])
+  @@map("availabilities")
+}
+
+model HotelBooking {
+  id         String        @id @default(cuid())
+  sessionId  String        @unique
+  hotelId    String?
+  hotelName  String
+  city       String
+  checkIn    DateTime
+  checkOut   DateTime
+  cost       Float
+  status     BookingStatus @default(A_RESERVER)
+  reference  String?
+  notes      String?
+
+  session    TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  hotel      Hotel?          @relation(fields: [hotelId], references: [id])
+
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  @@map("hotel_bookings")
+}
+
+model MaterialAssignment {
+  id         String   @id @default(cuid())
+  sessionId  String
+  materialId String
+  quantity   Int      @default(1)
+  assignedAt DateTime @default(now())
+  returnedAt DateTime?
+  notes      String?
+
+  session    TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  material   Material        @relation(fields: [materialId], references: [id])
+
+  @@map("material_assignments")
+}
+
+model ConsumableUsage {
+  id           String   @id @default(cuid())
+  sessionId    String
+  consumableId String
+  quantity     Int
+  decremented  Boolean  @default(false)
+
+  session    TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  consumable Consumable      @relation(fields: [consumableId], references: [id])
+
+  @@unique([sessionId, consumableId])
+  @@map("consumable_usages")
+}
+
+model StockMovement {
+  id           String    @id @default(cuid())
+  consumableId String
+  quantity     Int       // positif = entrée, négatif = sortie
+  reason       String    // "session:cuid", "reapprovisionnement", "correction"
+  balanceAfter Int
+  createdAt    DateTime  @default(now())
+
+  consumable   Consumable @relation(fields: [consumableId], references: [id])
+
+  @@map("stock_movements")
+}
+
+// ─────────────────────────────────────────────
+// DOCUMENTS & RAPPORTS
+// ─────────────────────────────────────────────
+
+model Document {
+  id        String         @id @default(cuid())
+  sessionId String
+  type      DocumentType
+  status    DocumentStatus @default(A_PREPARER)
+  fileUrl   String?
+  fileName  String?
+  mimeType  String?
+  sizeBytes Int?
+  notes     String?
+
+  session   TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  versions  DocumentVersion[]
+
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@map("documents")
+}
+
+model DocumentVersion {
+  id         String   @id @default(cuid())
+  documentId String
+  version    Int
+  fileUrl    String
+  comment    String?
+  createdAt  DateTime @default(now())
+
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@map("document_versions")
+}
+
+model TrainingReport {
+  id                String       @id @default(cuid())
+  sessionId         String       @unique
+  rawFromTrainer    String?      @db.Text // version brute Markdown/texte
+  rawFileUrl        String?
+  finalFileUrl      String?
+  finalPdfUrl       String?
+  status            ReportStatus @default(ATTENDU)
+  trainerUploadToken String?     @unique // token pour upload sans compte
+  trainerUploadExpiry DateTime?
+  sentToClientAt    DateTime?
+  notes             String?      @db.Text
+
+  session           TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  @@map("training_reports")
+}
+
+// ─────────────────────────────────────────────
+// COMMUNICATIONS
+// ─────────────────────────────────────────────
+
+model WhatsAppThread {
+  id        String           @id @default(cuid())
+  trainerId String
+  sessionId String?
+  waThreadId String?         // ID de conversation Meta
+
+  trainer   Trainer          @relation(fields: [trainerId], references: [id])
+  session   TrainingSession? @relation(fields: [sessionId], references: [id])
+  messages  WhatsAppMessage[]
+
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@map("whatsapp_threads")
+}
+
+model WhatsAppMessage {
+  id          String    @id @default(cuid())
+  threadId    String
+  direction   Direction
+  body        String    @db.Text
+  waMessageId String?   @unique  // ID Meta
+  intent      String?   // "proposition_date" | "refus" | "question" | "confirmation"
+  parsedDate  DateTime?
+  parsedDates Json?     // tableau de dates proposées
+  read        Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+
+  thread      WhatsAppThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@map("whatsapp_messages")
+}
+
+model EmailThread {
+  id        String         @id @default(cuid())
+  clientId  String
+  subject   String?
+  outlookConversationId String?
+
+  client    Client         @relation(fields: [clientId], references: [id])
+  requests  TrainingRequest[]
+  messages  EmailMessage[]
+
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@map("email_threads")
+}
+
+model EmailMessage {
+  id              String    @id @default(cuid())
+  threadId        String
+  direction       Direction
+  outlookId       String?   @unique // ID message Outlook
+  subject         String?
+  body            String?   @db.Text
+  fromAddress     String?
+  toAddresses     Json?     // string[]
+  sentAt          DateTime?
+  receivedAt      DateTime?
+  read            Boolean   @default(false)
+
+  thread          EmailThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@map("email_messages")
+}
+
+// ─────────────────────────────────────────────
+// NOTIFICATIONS & CACHE
+// ─────────────────────────────────────────────
+
+model Notification {
+  id         String             @id @default(cuid())
+  sessionId  String?
+  type       NotificationType
+  status     NotificationStatus @default(EN_ATTENTE)
+  scheduledAt DateTime
+  sentAt     DateTime?
+  channel    String             // "whatsapp" | "email" | "inapp"
+  recipient  String             // phone | email
+  payload    Json?
+  error      String?
+
+  session    TrainingSession? @relation(fields: [sessionId], references: [id])
+
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  @@map("notifications")
+}
+
+model DistanceCache {
+  id         String    @id @default(cuid())
+  trainerId  String
+  siteId     String
+  distanceKm Float
+  durationMin Int
+  cachedAt   DateTime  @default(now())
+  expiresAt  DateTime
+
+  trainer    Trainer    @relation("TrainerDistances", fields: [trainerId], references: [id], onDelete: Cascade)
+  site       ClientSite @relation("SiteDistances", fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@unique([trainerId, siteId])
+  @@map("distance_cache")
+}
+
+// ─────────────────────────────────────────────
+// AUDIT & CONFIG
+// ─────────────────────────────────────────────
+
+model AuditLog {
+  id         String      @id @default(cuid())
+  userId     String?
+  action     AuditAction
+  entityType String      // "TrainingSession", "TrainingRequest"...
+  entityId   String
+  before     Json?
+  after      Json?
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime    @default(now())
+
+  user       User?       @relation(fields: [userId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model AppConfig {
+  key       String   @id
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+
+  @@map("app_config")
+}
+
+// ─────────────────────────────────────────────
+// PIPELINE AUTOMATISÉ — TRAITEMENT DES DEMANDES
+// ─────────────────────────────────────────────
+
+/// Pipeline d'automatisation pour chaque demande entrante
+model DemandePipeline {
+  id            String         @id @default(cuid())
+  channel       IntakeChannel  // canal de réception
+  rawMessage    String         @db.Text     // message brut original
+  fromAddress   String         // email / +212... / telegram_id
+  fromName      String?        // nom déduit ou fourni
+  externalMsgId String?        // ID message Outlook / WA / Telegram
+
+  // ── Extraction IA ───────────────────────────
+  parsedThemeCode   String?    // code thème détecté ("CACES_R489")
+  parsedThemeLabel  String?    // libellé brut extrait
+  parsedDateFrom    DateTime?  // date(s) souhaitées par le client
+  parsedDateTo      DateTime?
+  parsedParticipants Int?
+  parsedClientName  String?
+  parsedSiteCity    String?
+  parsedUrgency     Int?       @default(0)
+  aiConfidence      Float?     // score 0.0–1.0
+  aiRawOutput       Json?      // réponse brute Claude
+
+  // ── État machine ────────────────────────────
+  status              PipelineStatus @default(RECEIVED)
+  currentTrainerIndex Int            @default(0)
+
+  // ── Liens vers entités créées ────────────────
+  requestId    String?          // TrainingRequest créée après parsing
+  sessionId    String?          // TrainingSession créée après confirmation
+
+  // ── Timestamps clés ──────────────────────────
+  parsedAt         DateTime?
+  trainerContactedAt DateTime?
+  clientNotifiedAt  DateTime?
+  confirmedAt      DateTime?
+
+  notes       String?     @db.Text
+  errorReason String?     @db.Text
+
+  candidates  TrainerCandidate[]
+  messages    PipelineMessage[]
+
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@map("demande_pipelines")
+}
+
+/// Formateur candidat ordonné pour un pipeline
+model TrainerCandidate {
+  id         String  @id @default(cuid())
+  pipelineId String
+  trainerId  String
+  rank       Int     // ordre de contact : 1, 2, 3...
+  score      Float?  // score matching (distance, dispo, tarif)
+
+  // Statut individuel du candidat
+  status       String   @default("pending")
+  // "pending" | "contacted" | "proposed_dates" | "accepted" | "declined" | "skipped" | "timeout"
+
+  proposedDates Json?   // dates proposées par le formateur [DateTime]
+  waMessageId   String? // ID du message WA envoyé au formateur
+  contactedAt   DateTime?
+  respondedAt   DateTime?
+
+  pipeline   DemandePipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  trainer    Trainer         @relation(fields: [trainerId], references: [id])
+
+  @@unique([pipelineId, trainerId])
+  @@map("trainer_candidates")
+}
+
+/// Historique des messages du pipeline (entrants + sortants)
+model PipelineMessage {
+  id         String        @id @default(cuid())
+  pipelineId String
+  direction  Direction     // ENTRANT | SORTANT
+  channel    IntakeChannel
+  fromAddr   String
+  toAddr     String
+  body       String        @db.Text
+  parsedData Json?         // données extraites de ce message
+
+  pipeline   DemandePipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  createdAt  DateTime        @default(now())
+
+  @@map("pipeline_messages")
+}
+
+// ─────────────────────────────────────────────
+// V2 — PRÉSÉLECTION FORMATEURS EXTERNES
+// ─────────────────────────────────────────────
+
+/// Pipeline de candidature pour un formateur externe (avant activation)
+model Preselection {
+  id              String             @id @default(cuid())
+  trainerId       String
+  status          PreselectionStatus @default(CANDIDAT)
+  source          String?            // "prospection" | "candidature" | "recommandation"
+  cvUrl           String?
+  evaluationScore Int?               // score /100 après évaluation
+  evaluationNotes String?            @db.Text
+  evaluatedBy     String?            // userId
+  evaluatedAt     DateTime?
+  rejectionReason String?            @db.Text
+  acceptedAt      DateTime?
+
+  trainer         Trainer            @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@map("preselections")
+}
+
+// ─────────────────────────────────────────────
+// V2 — CONVENTION CADRE (formateurs externes)
+// ─────────────────────────────────────────────
+
+/// Convention cadre signée avec un formateur externe (contrat-cadre annuel ou pluri-annuel)
+model Framework {
+  id           String          @id @default(cuid())
+  trainerId    String
+  reference    String          // ex. "CC-2025-001"
+  signedAt     DateTime
+  validUntil   DateTime
+  status       FrameworkStatus @default(ACTIF)
+  fileUrl      String?         // PDF signé
+  notes        String?         @db.Text
+
+  trainer      Trainer         @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+  negotiations NegotiationStep[]
+  prestations  Prestation[]
+
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@map("frameworks")
+}
+
+// ─────────────────────────────────────────────
+// V2 — NÉGOCIATION TARIFAIRE
+// ─────────────────────────────────────────────
+
+/// Étape de négociation du tarif avec un formateur externe
+model NegotiationStep {
+  id            String            @id @default(cuid())
+  trainerId     String
+  frameworkId   String?
+  themeId       String?
+  proposedRate  Float             // tarif proposé (MAD/jour)
+  counterRate   Float?            // contre-proposition formateur
+  agreedRate    Float?            // tarif final accepté
+  status        NegotiationStatus @default(EN_COURS)
+  validUntil    DateTime?         // date d'expiration de la proposition
+  initiatedBy   String?           // userId
+  notes         String?           @db.Text
+  closedAt      DateTime?
+
+  trainer       Trainer           @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+  framework     Framework?        @relation(fields: [frameworkId], references: [id])
+  theme         Theme?            @relation(fields: [themeId], references: [id])
+
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@map("negotiation_steps")
+}
+
+// ─────────────────────────────────────────────
+// V2 — PRESTATION EXTERNE (M12 — BdC + facture)
+// ─────────────────────────────────────────────
+
+/// Prestation d'un formateur externe pour une session — génère un BdC puis une facture reçue
+model Prestation {
+  id              String           @id @default(cuid())
+  sessionId       String           @unique
+  trainerId       String
+  frameworkId     String?
+  agreedRate      Float            // tarif journalier convenu (MAD)
+  daysCount       Float            // nombre de jours (peut être 0.5)
+  totalAmount     Float            // agreedRate × daysCount
+  status          PrestationStatus @default(BROUILLON)
+
+  // Bon de commande émis
+  poReference     String?          // "BDC-2025-042"
+  poEmittedAt     DateTime?
+  poFileUrl       String?
+  trainerAcceptedAt DateTime?
+
+  // Facture reçue
+  invoiceReference String?         // référence facture formateur
+  invoiceReceivedAt DateTime?
+  invoiceFileUrl  String?
+  invoiceAmount   Float?           // montant facturé (peut différer de totalAmount)
+  coherenceCheck  Boolean?         // R15 — facture cohérente avec BdC ?
+  coherenceNotes  String?          @db.Text
+
+  // Paiement
+  paidAt          DateTime?
+  paymentRef      String?
+
+  session         TrainingSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  trainer         Trainer          @relation(fields: [trainerId], references: [id])
+  framework       Framework?       @relation(fields: [frameworkId], references: [id])
+
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@map("prestations")
+}
+
+// ─────────────────────────────────────────────
+// V2 — FACTURATION CLIENT (M13)
+// ─────────────────────────────────────────────
+
+/// Facture émise au client après clôture d'une ou plusieurs sessions
+model Invoice {
+  id              String        @id @default(cuid())
+  clientId        String
+  reference       String        // "FACT-2025-001"
+  issueDate       DateTime      @default(now())
+  dueDate         DateTime      // issueDate + paymentTerms
+  status          InvoiceStatus @default(BROUILLON)
+
+  subtotal        Float         // HT
+  taxRate         Float         @default(0.20)  // 20 % TVA Maroc
+  taxAmount       Float
+  total           Float         // TTC
+
+  fileUrl         String?       // PDF généré
+  notes           String?       @db.Text
+
+  // Paiement
+  paidAt          DateTime?
+  paymentRef      String?
+  paidAmount      Float?
+
+  // Relances automatiques
+  reminderSentJ30 Boolean       @default(false)
+  reminderSentJ45 Boolean       @default(false)
+  reminderSentJ60 Boolean       @default(false)
+
+  client          Client        @relation(fields: [clientId], references: [id])
+  lines           InvoiceLine[]
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@map("invoices")
+}
+
+/// Ligne de facture (une ligne = une session ou un forfait)
+model InvoiceLine {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  sessionId   String?  // session concernée (null = forfait ou autre)
+  description String
+  quantity    Float    @default(1)
+  unitPrice   Float
+  amount      Float    // quantity × unitPrice
+
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  session     TrainingSession? @relation(fields: [sessionId], references: [id])
+
+  @@map("invoice_lines")
+}

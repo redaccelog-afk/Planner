@@ -1,0 +1,81 @@
+{
+  "common": {
+    "appName": "CCE LOG — Planification",
+    "loading": "Chargement…",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "add": "Ajouter",
+    "confirm": "Confirmer",
+    "search": "Rechercher",
+    "filter": "Filtrer",
+    "export": "Exporter",
+    "actions": "Actions",
+    "status": "Statut",
+    "date": "Date",
+    "noData": "Aucune donnée",
+    "error": "Une erreur est survenue",
+    "success": "Opération réussie"
+  },
+  "nav": {
+    "dashboard": "Tableau de bord",
+    "demandes": "Demandes",
+    "sessions": "Sessions",
+    "formateurs": "Formateurs",
+    "clients": "Clients",
+    "themes": "Thèmes",
+    "stock": "Stock",
+    "rapports": "Rapports",
+    "parametres": "Paramètres"
+  },
+  "auth": {
+    "signIn": "Se connecter",
+    "signInMicrosoft": "Se connecter avec Microsoft",
+    "signOut": "Se déconnecter",
+    "connecting": "Connexion en cours…",
+    "accessTrainer": "Accès formateur",
+    "noAccount": "Formateur ? Accédez via le lien envoyé par mail."
+  },
+  "status": {
+    "NOUVELLE": "Nouvelle",
+    "EN_RECHERCHE": "En recherche",
+    "PROPOSEE": "Proposée",
+    "CONFIRMEE": "Confirmée",
+    "ANNULEE": "Annulée",
+    "CLOTUREE": "Clôturée",
+    "PROVISOIRE": "Provisoire",
+    "ATTENDU": "Attendu",
+    "RECU": "Reçu",
+    "CORRIGE": "Corrigé",
+    "ENVOYE_CLIENT": "Envoyé client"
+  },
+  "session": {
+    "confirmed": "Confirmée",
+    "provisional": "Provisoire",
+    "cancelled": "Annulée"
+  },
+  "themes": {
+    "CACES": "CACES",
+    "VR": "Réalité Virtuelle",
+    "SECURITE": "Sécurité",
+    "AUTRE": "Autre"
+  },
+  "pages": {
+    "home": {
+      "title": "CCE LOG",
+      "subtitle": "Planification des formations",
+      "description": "Gérez vos demandes de formation, planifiez les formateurs et automatisez le cycle complet de vos sessions CACES, VR et sécurité.",
+      "secureAccess": "Accès sécurisé",
+      "secureDesc": "Connectez-vous avec votre compte Microsoft CCE LOG",
+      "trainerAccess": "Accès formateur →",
+      "footer": "Organisme de formation & certification · Maroc"
+    },
+    "dashboard": {
+      "title": "Tableau de bord",
+      "inbox": "Boîte de réception",
+      "actionsRequired": "Actions requises",
+      "upcomingSessions": "Sessions à venir"
+    }
+  }
+}
