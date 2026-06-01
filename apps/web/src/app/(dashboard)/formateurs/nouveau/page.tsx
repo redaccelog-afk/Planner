@@ -233,7 +233,7 @@ function FormInput({
 }
 
 function TypeCard({
-  value,
+  value: _value,
   selected,
   onSelect,
   icon,

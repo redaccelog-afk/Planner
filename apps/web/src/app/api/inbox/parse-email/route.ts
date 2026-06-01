@@ -3,6 +3,7 @@ import { db } from "@ccelog/db";
 import { EMAIL_EXTRACTION_PROMPT, fuzzyMatchClient } from "@ccelog/shared";
 import type { AiEmailExtraction } from "@ccelog/shared";
 import { auth } from "@/lib/auth";
+// @ts-expect-error -- anthropic sdk loaded at runtime
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 

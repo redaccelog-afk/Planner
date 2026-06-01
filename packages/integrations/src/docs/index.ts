@@ -152,7 +152,7 @@ export async function uploadDocument(
       Authorization: `Bearer ${supabaseKey}`,
       "Content-Type": mimeType,
     },
-    body: buffer,
+    body: new Uint8Array(buffer),
   });
 
   if (!res.ok) {

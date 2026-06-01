@@ -22,7 +22,7 @@ export async function POST(_req: Request, ctx: RouteContext) {
 
   if (!session) return NextResponse.json({ error: "Session introuvable" }, { status: 404 });
 
-  const showAs = session.status === "CONFIRMEE" ? "busy" : "tentative";
+  const showAs = (session.status === "CONFIRMEE" ? "busy" : "tentative") as "busy" | "tentative";
 
   const eventData = {
     subject: `[CCE LOG] ${session.theme.label} — ${session.request.client.name}`,

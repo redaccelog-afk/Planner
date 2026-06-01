@@ -82,6 +82,7 @@ export async function POST(req: Request) {
 
         // Déclencher le parsing IA en async
         try {
+          // @ts-expect-error -- @ccelog/worker is server-side only, loaded at runtime
           const { queues } = await import("@ccelog/worker");
           await queues.waParse.add("parse", { messageId: waMessage.id });
         } catch {

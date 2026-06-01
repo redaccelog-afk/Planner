@@ -1,5 +1,4 @@
 import { db } from "@ccelog/db";
-import Link from "next/link";
 import { Plus, Clock, Users } from "lucide-react";
 
 export const metadata = { title: "Thèmes de formation" };

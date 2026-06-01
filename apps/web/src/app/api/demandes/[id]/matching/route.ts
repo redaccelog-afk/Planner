@@ -3,7 +3,7 @@ import { db } from "@ccelog/db";
 import { scoreTrainer, rankTrainers, calculateSessionCost, shouldRequireHotel } from "@ccelog/shared";
 import { getDistance } from "@ccelog/integrations";
 import { auth } from "@/lib/auth";
-import { addDays, isBefore, isAfter } from "date-fns";
+import { addDays } from "date-fns";
 
 type RouteContext = { params: Promise<{ id: string }> };
 

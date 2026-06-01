@@ -12,6 +12,7 @@
     "@ccelog/db": "workspace:*",
     "@ccelog/shared": "workspace:*",
     "@microsoft/microsoft-graph-client": "^3.0.7",
+    "date-fns": "^4.1.0",
     "docxtemplater": "^3.68.7",
     "node-fetch": "^3.3.2",
     "pizzip": "^3.2.0",

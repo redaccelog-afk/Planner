@@ -3,7 +3,7 @@ import { db } from "@ccelog/db";
 import { calculateSessionCost, shouldRequireHotel } from "@ccelog/shared";
 import { getDistance } from "@ccelog/integrations";
 import { auth } from "@/lib/auth";
-import { addDays, differenceInCalendarDays } from "date-fns";
+import { differenceInCalendarDays } from "date-fns";
 import { z } from "zod";
 
 const OptimisationSchema = z.object({

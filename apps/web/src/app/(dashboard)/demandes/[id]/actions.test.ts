@@ -221,20 +221,6 @@ describe("updateRequestStatusAction — revalidation", () => {
 // ─────────────────────────────────────────────────────────────────────
 
 describe("VALID_TRANSITIONS — cohérence du graphe d'état", () => {
-  // Tous les statuts valides définis dans le CDC + legacy
-  const ALL_STATUSES = [
-    "NOUVELLE",
-    "EN_ATTENTE_VALIDATION_FORMATEUR",
-    "VALIDEE_FORMATEUR",
-    "EN_ATTENTE_VALIDATION_BO",
-    "EN_RECHERCHE",
-    "PROPOSEE",
-    "CONFIRMEE",
-    "TERMINEE",
-    "ANNULEE",
-    "CLOTUREE",
-  ] as const;
-
   it("TERMINEE, ANNULEE, CLOTUREE sont des états terminaux (aucune transition sortante)", async () => {
     setupAuth();
     const terminaux = ["TERMINEE", "ANNULEE", "CLOTUREE"] as const;

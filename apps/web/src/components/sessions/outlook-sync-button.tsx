@@ -8,7 +8,7 @@ interface OutlookSyncButtonProps {
   hasOutlookId: boolean;
 }
 
-export function OutlookSyncButton({ sessionId, hasOutlookId }: OutlookSyncButtonProps) {
+export function OutlookSyncButton({ sessionId, hasOutlookId: _hasOutlookId }: OutlookSyncButtonProps) {
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
 

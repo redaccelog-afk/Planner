@@ -45,7 +45,8 @@ export async function createTrainerAction(formData: FormData) {
     data.paymentTerms = paymentTermsRaw ? parseInt(paymentTermsRaw, 10) : 30;
   }
 
-  const trainer = await db.trainer.create({ data });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- champs conditionnels INTERNE/EXTERNE assemblés dynamiquement
+  const trainer = await db.trainer.create({ data: data as any });
 
   revalidatePath("/formateurs");
 

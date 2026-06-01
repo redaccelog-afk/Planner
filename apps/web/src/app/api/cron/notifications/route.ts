@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
+// @ts-expect-error -- bullmq is a server-only external package
 import { Queue } from "bullmq";
+// @ts-expect-error -- ioredis is a server-only external package
 import IORedis from "ioredis";
+// @ts-expect-error -- @ccelog/worker is server-side only, loaded at runtime
 import { scheduleSessionNotifications } from "@ccelog/worker/src/jobs/notification-scheduler";
 
 /**

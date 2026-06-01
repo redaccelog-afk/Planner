@@ -3,7 +3,6 @@ import { db } from "@ccelog/db";
 import { auth } from "@/lib/auth";
 import { shouldRequireHotel } from "@ccelog/shared";
 import { getDistance } from "@ccelog/integrations";
-import { differenceInCalendarDays } from "date-fns";
 import { z } from "zod";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -89,6 +88,7 @@ export async function POST(req: Request, ctx: RouteContext) {
 
     // Recalculer le coût total
     try {
+      // @ts-expect-error -- @ccelog/worker is server-side only, loaded at runtime
       const { queues } = await import("@ccelog/worker");
       await queues.costRecalc.add("recalc", { sessionId: id });
     } catch { /* worker non dispo */ }

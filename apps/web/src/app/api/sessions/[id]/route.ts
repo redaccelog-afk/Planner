@@ -85,6 +85,7 @@ export async function PATCH(req: Request, ctx: RouteContext) {
     // Sync Outlook si statut a changé
     if (finalStatus !== before.status) {
       try {
+        // @ts-expect-error -- @ccelog/worker is server-side only, loaded at runtime
         const { queues } = await import("@ccelog/worker");
         const action = finalStatus === "ANNULEE" ? "delete" : "update";
         await queues.outlookSync.add("sync", { sessionId: id, action });

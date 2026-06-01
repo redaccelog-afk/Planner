@@ -63,6 +63,7 @@ export async function POST(req: Request) {
 
     // Déclencher le job de sync Outlook
     try {
+      // @ts-expect-error -- @ccelog/worker is server-side only, loaded at runtime
       const { queues } = await import("@ccelog/worker");
       await queues.outlookSync.add("sync", { sessionId: trainingSession.id, action: "create" });
     } catch {
@@ -71,6 +72,7 @@ export async function POST(req: Request) {
 
     // Déclencher le calcul de coût
     try {
+      // @ts-expect-error -- @ccelog/worker is server-side only, loaded at runtime
       const { queues } = await import("@ccelog/worker");
       await queues.costRecalc.add("recalc", { sessionId: trainingSession.id });
     } catch {

@@ -136,7 +136,6 @@ export async function POST(req: Request, ctx: RouteContext) {
 async function checkStockForSession(
   session: Awaited<ReturnType<typeof db.trainingSession.findUnique>> & {
     request: { participants: number };
-    theme: { consumableNeeds?: Array<{ consumableId: string; qtyPerParticipant: number; consumable: { stockQty: number; label: string } }> };
   }
 ) {
   const issues: string[] = [];
