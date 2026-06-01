@@ -97,16 +97,16 @@ export default async function SessionsPage({
       {/* Légende couleurs */}
       <div className="flex items-center gap-4 text-xs text-muted-foreground flex-shrink-0">
         <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded bg-white border border-gray-300" />
-          Confirmée
+          <div className="w-3 h-3 rounded bg-green-500/20 border border-green-500/40" />
+          <span className="text-green-400">Confirmée</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded bg-yellow-50 border border-yellow-300" />
-          Provisoire
+          <div className="w-3 h-3 rounded bg-yellow-500/20 border border-yellow-500/40" />
+          <span className="text-yellow-400">Provisoire</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded bg-red-50 border border-red-300" />
-          Annulée
+          <div className="w-3 h-3 rounded bg-red-500/20 border border-red-500/40" />
+          <span className="text-red-400">Annulée</span>
         </div>
       </div>
 
@@ -172,10 +172,10 @@ function ListView({ sessions }: { sessions: SessionWithRelations[] }) {
             {sessions.map((s) => {
               const statusClass =
                 s.status === "CONFIRMEE"
-                  ? "bg-white text-gray-900 border-gray-300"
+                  ? "bg-green-500/15 text-green-400 border-green-500/30"
                   : s.status === "PROVISOIRE"
-                  ? "bg-yellow-50 text-yellow-900 border-yellow-300"
-                  : "bg-red-50 text-red-800 border-red-300";
+                  ? "bg-yellow-500/15 text-yellow-400 border-yellow-500/30"
+                  : "bg-red-500/15 text-red-400 border-red-500/30";
               const statusLabel =
                 s.status === "CONFIRMEE" ? "Confirmée" : s.status === "PROVISOIRE" ? "Provisoire" : "Annulée";
 
@@ -212,8 +212,9 @@ function ListView({ sessions }: { sessions: SessionWithRelations[] }) {
 
 function MapPlaceholder() {
   return (
-    <div className="bg-card border border-border rounded-xl flex items-center justify-center h-64">
-      <p className="text-muted-foreground text-sm">Vue carte — Phase 5 (Google Maps Distance Matrix)</p>
+    <div className="bg-card border border-border rounded-xl flex flex-col items-center justify-center h-64 gap-3">
+      <Map className="h-10 w-10 text-muted-foreground/30" />
+      <p className="text-muted-foreground text-sm">Vue carte non disponible pour le moment.</p>
     </div>
   );
 }

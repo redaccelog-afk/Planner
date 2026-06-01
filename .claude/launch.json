@@ -12,6 +12,12 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@ccelog/worker", "dev"],
       "port": null
+    },
+    {
+      "name": "vitest-ui",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@ccelog/web", "exec", "vitest", "--ui", "--open", "false"],
+      "port": 51204
     }
   ]
 }

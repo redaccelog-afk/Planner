@@ -1,6 +1,13 @@
-import { auth } from "@/lib/auth";
+/**
+ * Edge Middleware — utilise NextAuth avec authConfig (sans Prisma).
+ * Ne jamais importer depuis @/lib/auth ici (PrismaAdapter incompatible Edge).
+ */
+import NextAuth from "next-auth";
+import { authConfig } from "@/lib/auth.config";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+
+const { auth } = NextAuth(authConfig);
 
 const PUBLIC_PATHS = [
   "/",

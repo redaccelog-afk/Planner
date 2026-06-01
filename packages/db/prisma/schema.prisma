@@ -43,6 +43,7 @@ enum Role {
   FORMATEUR
   COMPTABILITE
   LECTEUR
+  CLIENT
 }
 
 enum TrainerType {
@@ -104,12 +105,18 @@ enum RequestStatus {
   CONFIRMEE
   ANNULEE
   CLOTUREE
+  EN_ATTENTE_VALIDATION_FORMATEUR
+  VALIDEE_FORMATEUR
+  EN_ATTENTE_VALIDATION_BO
+  TERMINEE
 }
 
 enum SessionStatus {
   PROVISOIRE
   CONFIRMEE
   ANNULEE
+  EN_COURS
+  TERMINEE
 }
 
 enum AvailabilityStatus {
@@ -141,6 +148,10 @@ enum DocumentType {
   CERTIFICAT
   BON_SORTIE_MATERIEL
   VOUCHER_HOTEL
+  ATTESTATION
+  CACES_CERT
+  ORDRE_MISSION
+  FEUILLE_PRESENCE
 }
 
 enum DocumentStatus {
@@ -181,6 +192,9 @@ enum NotificationType {
   BON_COMMANDE_EXTERNE           // PO sent to external trainer
   NEGOCIATION_EXPIREE            // negotiation validity expired
   CONVENTION_EXPIREE             // framework contract expiring
+  ORDRE_MISSION_AUTO             // ordre de mission généré automatiquement à J-3
+  RAPPEL_J7_CLIENT               // rappel J-7 pour le client
+  RAPPEL_J3_ALL                  // rappel J-3 pour tous
   AUTRE
 }
 
@@ -205,6 +219,30 @@ enum AuditAction {
   PO_EMIT
   PO_VALIDATE
   NEGOTIATE
+}
+
+enum AptitudeResult {
+  APTE
+  INAPT
+  EN_ATTENTE
+}
+
+enum CacesModuleRef {
+  R482   // Engins de chantier
+  R483   // Chariots de manutention
+  R484   // Ponts roulants et portiques
+  R485   // Chariots à mât rétractable
+  R486   // Plates-formes élévatrices mobiles
+  R487   // Grues à tour
+  R489   // Chariots élévateurs
+  R490   // Grues mobiles
+}
+
+enum ExpenseCategory {
+  REPAS
+  HEBERGEMENT
+  TRANSPORT
+  AUTRE
 }
 
 // ─────────────────────────────────────────────
@@ -365,11 +403,13 @@ model TrainerRate {
 }
 
 model Client {
-  id            String          @id @default(cuid())
-  name          String
-  normalizedName String          // pour matching fuzzy
-  active        Boolean         @default(true)
-  notes         String?         @db.Text
+  id               String          @id @default(cuid())
+  name             String
+  normalizedName   String          // pour matching fuzzy
+  active           Boolean         @default(true)
+  notes            String?         @db.Text
+  portalToken      String?         @unique
+  portalTokenExpiry DateTime?
 
   contacts      ClientContact[]
   sites         ClientSite[]
@@ -563,6 +603,14 @@ model TrainingSession {
   notifications   Notification[]
   prestation      Prestation?
   invoiceLines    InvoiceLine[]
+  participants    Participant[]
+  attestations    Attestation[]
+  cacesResults    CacesResult[]
+  expenseItems    ExpenseItem[]
+  dailyLogs       SessionDailyLog[]
+  missionOrder    MissionOrder?
+  launchedAt      DateTime?
+  closedAt        DateTime?
 
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
@@ -1117,4 +1165,170 @@ model InvoiceLine {
   session     TrainingSession? @relation(fields: [sessionId], references: [id])
 
   @@map("invoice_lines")
+}
+
+// ─────────────────────────────────────────────
+// MODULE 5 — PRÉSENCES (Gestion des participants)
+// ─────────────────────────────────────────────
+
+/// Participant à une session (feuille de présence)
+model Participant {
+  id          String    @id @default(cuid())
+  sessionId   String
+  nom         String
+  prenom      String
+  cin         String?   // CIN Maroc
+  dateNaissance DateTime?
+  fonction    String?
+  present     Boolean   @default(true)
+
+  session     TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  attestations Attestation[]
+  cacesResults CacesResult[]
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("participants")
+}
+
+// ─────────────────────────────────────────────
+// MODULE 6 — ATTESTATIONS & CACES
+// ─────────────────────────────────────────────
+
+/// Modèle d'attestation (30 templates paramétrables)
+model AttestationTemplate {
+  id              String    @id @default(cuid())
+  name            String    // "Attestation CACES R489"
+  code            String    @unique // "ATT_CACES_R489"
+  themeId         String?   // lié à un thème (optionnel)
+  nomenclature    String    // ex. "ATT-{YEAR}-{SEQ:4}"
+  lastSequence    Int       @default(0)
+  headerHtml      String?   @db.Text  // entête HTML (logo, cachet numérique)
+  bodyHtml        String?   @db.Text  // corps template (variables {{nom}}, {{cin}}...)
+  footerHtml      String?   @db.Text
+  active          Boolean   @default(true)
+
+  attestations    Attestation[]
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@map("attestation_templates")
+}
+
+/// Attestation générée pour un participant
+model Attestation {
+  id              String         @id @default(cuid())
+  sessionId       String
+  participantId   String
+  templateId      String
+  numero          String         // ex. "ATT-2025-0042" (auto-généré)
+  resultat        AptitudeResult @default(EN_ATTENTE)
+  note            Float?         // note /20 ou /100
+  deliveredAt     DateTime?
+  fileUrl         String?        // PDF généré
+
+  session         TrainingSession    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  participant     Participant        @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  template        AttestationTemplate @relation(fields: [templateId], references: [id])
+
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@unique([sessionId, participantId, templateId])
+  @@map("attestations")
+}
+
+/// Résultat CACES par module pour un participant
+model CacesResult {
+  id            String         @id @default(cuid())
+  sessionId     String
+  participantId String
+  module        CacesModuleRef
+  theoriqueNote Float?         // note théorique
+  pratiqueNote  Float?         // note pratique
+  resultat      AptitudeResult @default(EN_ATTENTE)
+  numero        String?        // numéro CACES généré
+  fileUrl       String?        // CACES PDF
+  validUntil    DateTime?      // validité 5 ans
+
+  session       TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  participant   Participant     @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@unique([sessionId, participantId, module])
+  @@map("caces_results")
+}
+
+// ─────────────────────────────────────────────
+// MODULE 4 — ORDRES DE MISSION
+// ─────────────────────────────────────────────
+
+/// Ordre de mission généré automatiquement à J-3 pour formateur interne
+model MissionOrder {
+  id          String    @id @default(cuid())
+  sessionId   String    @unique
+  numero      String    // "OM-2025-042"
+  generatedAt DateTime  @default(now())
+  fileUrl     String?   // PDF signé
+  sentAt      DateTime? // envoyé au formateur
+  signedAt    DateTime? // signé par le formateur
+
+  session     TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("mission_orders")
+}
+
+// ─────────────────────────────────────────────
+// MODULE 8 — FRAIS & JUSTIFICATIFS
+// ─────────────────────────────────────────────
+
+/// Frais d'une mission (repas, hébergement, transport, autre)
+model ExpenseItem {
+  id          String          @id @default(cuid())
+  sessionId   String
+  trainerId   String
+  category    ExpenseCategory
+  amount      Float           // montant MAD
+  date        DateTime
+  description String?
+  receiptUrl  String?         // scan justificatif
+  approved    Boolean?        // null = en attente, true = approuvé, false = refusé
+  approvedBy  String?         // userId
+  approvedAt  DateTime?
+  notes       String?
+
+  session     TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@map("expense_items")
+}
+
+// ─────────────────────────────────────────────
+// MODULE 5 — SUIVI JOURNALIER
+// ─────────────────────────────────────────────
+
+/// Suivi journalier d'une session (statut de fin de journée)
+model SessionDailyLog {
+  id          String    @id @default(cuid())
+  sessionId   String
+  date        DateTime  // date du jour
+  advancement Int       // pourcentage avancement 0-100
+  notes       String?   @db.Text
+  reportedBy  String?   // trainerId ou userId
+
+  session     TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime  @default(now())
+
+  @@unique([sessionId, date])
+  @@map("session_daily_logs")
 }

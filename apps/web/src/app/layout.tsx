@@ -16,10 +16,16 @@ export const metadata: Metadata = {
   keywords: ["CCE LOG", "CACES", "formation", "planification", "Maroc"],
   authors: [{ name: "CCE LOG" }],
   robots: { index: false, follow: false },
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "CCE LOG",
+  },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#1B4F8A",
+  themeColor: "#3b82f6",
   width: "device-width",
   initialScale: 1,
 };

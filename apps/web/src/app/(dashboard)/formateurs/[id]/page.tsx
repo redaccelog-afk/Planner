@@ -521,15 +521,19 @@ export default async function FormateurDetailPage({ params }: { params: Promise<
             ) : (
               <div className="space-y-2">
                 {trainer.sessions.map((session) => {
-                  const statusColors = {
+                  const statusColors: Record<string, string> = {
                     CONFIRMEE: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
                     PROVISOIRE: "text-amber-400 bg-amber-500/10 border-amber-500/20",
                     ANNULEE: "text-red-400 bg-red-500/10 border-red-500/20",
+                    EN_COURS: "text-blue-400 bg-blue-500/10 border-blue-500/20",
+                    TERMINEE: "text-gray-400 bg-gray-500/10 border-gray-500/20",
                   };
-                  const statusLabels = {
+                  const statusLabels: Record<string, string> = {
                     CONFIRMEE: "Confirmée",
                     PROVISOIRE: "Provisoire",
                     ANNULEE: "Annulée",
+                    EN_COURS: "En cours",
+                    TERMINEE: "Terminée",
                   };
                   return (
                     <Link

@@ -1,3 +1,4 @@
+import React from "react";
 import { db } from "@ccelog/db";
 import { notFound } from "next/navigation";
 import { formatDate, formatCurrency } from "@/lib/utils";
@@ -16,7 +17,7 @@ import {
 } from "lucide-react";
 import { OutlookSyncButton } from "@/components/sessions/outlook-sync-button";
 import { ConfirmSessionButton } from "@/components/sessions/confirm-session-button";
-import { createPrestationAction, createInvoiceFromSessionAction } from "./actions";
+import { createPrestationAction, createInvoiceFromSessionAction, lancerSessionAction, cloturerSessionAction } from "./actions";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -44,17 +45,20 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
       notifications: { orderBy: { scheduledAt: "asc" } },
       prestation: true,
       invoiceLines: { include: { invoice: true } },
+      missionOrder: true,
     },
   });
 
   if (!session) notFound();
 
-  const statusConfig = {
+  const statusConfig: Record<string, { label: string; icon: React.ElementType; className: string }> = {
     CONFIRMEE: { label: "Confirmée", icon: CheckCircle, className: "text-green-400" },
     PROVISOIRE: { label: "Provisoire", icon: Clock, className: "text-yellow-400" },
     ANNULEE: { label: "Annulée", icon: XCircle, className: "text-red-400" },
+    EN_COURS: { label: "En cours", icon: CheckCircle, className: "text-blue-400" },
+    TERMINEE: { label: "Terminée", icon: CheckCircle, className: "text-gray-400" },
   };
-  const sc = statusConfig[session.status];
+  const sc = statusConfig[session.status] ?? statusConfig["PROVISOIRE"];
   const costBreakdown = session.costBreakdown ? JSON.parse(session.costBreakdown as string) : null;
 
   const isExterne = session.trainer.type === "EXTERNE";
@@ -69,6 +73,34 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
         <ArrowLeft className="h-4 w-4" />
         Retour aux sessions
       </Link>
+
+      {/* Quick nav to sub-pages */}
+      <div className="flex flex-wrap gap-2">
+        <Link
+          href={`/sessions/${session.id}/presences`}
+          className="px-3 py-1.5 rounded-md text-xs font-medium bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors"
+        >
+          Présences
+        </Link>
+        <Link
+          href={`/sessions/${session.id}/attestations`}
+          className="px-3 py-1.5 rounded-md text-xs font-medium bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors"
+        >
+          Attestations
+        </Link>
+        <Link
+          href={`/sessions/${session.id}/frais`}
+          className="px-3 py-1.5 rounded-md text-xs font-medium bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors"
+        >
+          Frais
+        </Link>
+        <Link
+          href={`/sessions/${session.id}/rapport`}
+          className="px-3 py-1.5 rounded-md text-xs font-medium bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors"
+        >
+          Rapport
+        </Link>
+      </div>
 
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
@@ -290,6 +322,163 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
               </div>
             ))}
           </div>
+        )}
+
+        {/* PDF générés dynamiquement */}
+        {(session.report || session.missionOrder) && (
+          <div className="mt-4 pt-4 border-t border-border space-y-2">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">PDF disponibles</p>
+            {session.report && (
+              <a
+                href={`/api/pdf/rapport/${session.report.id}`}
+                className="text-sm text-primary hover:underline flex items-center gap-1"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <FileText className="h-4 w-4" /> Télécharger le rapport PDF
+              </a>
+            )}
+            {session.missionOrder && (
+              <a
+                href={`/api/pdf/mission-order/${session.missionOrder.id}`}
+                className="text-sm text-primary hover:underline flex items-center gap-1"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <FileText className="h-4 w-4" /> Télécharger l&apos;ordre de mission PDF
+              </a>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Cycle de vie */}
+      <div className="bg-card border border-border rounded-xl p-6">
+        <h2 className="font-semibold text-foreground mb-6">Cycle de vie</h2>
+
+        {/* Timeline */}
+        <div className="flex items-center gap-0 mb-6 overflow-x-auto pb-2">
+          {(["PROVISOIRE", "CONFIRMEE", "EN_COURS", "TERMINEE"] as const).map((step, idx, arr) => {
+            const stepOrder: Record<string, number> = {
+              PROVISOIRE: 0,
+              CONFIRMEE: 1,
+              EN_COURS: 2,
+              TERMINEE: 3,
+              ANNULEE: -1,
+            };
+            const currentOrder = stepOrder[session.status] ?? 0;
+            const stepIdx = stepOrder[step];
+            const isDone = currentOrder >= stepIdx;
+            const isCurrent = session.status === step;
+            const stepLabels: Record<string, string> = {
+              PROVISOIRE: "Provisoire",
+              CONFIRMEE: "Confirmée",
+              EN_COURS: "En cours",
+              TERMINEE: "Terminée",
+            };
+            return (
+              <div key={step} className="flex items-center flex-1 min-w-0">
+                <div className="flex flex-col items-center flex-1 min-w-0">
+                  <div
+                    className={`h-8 w-8 rounded-full flex items-center justify-center border-2 shrink-0 ${
+                      isDone
+                        ? isCurrent
+                          ? "border-primary bg-primary/20"
+                          : "border-green-500 bg-green-500/10"
+                        : "border-border bg-secondary"
+                    }`}
+                  >
+                    {isDone && !isCurrent ? (
+                      <CheckCircle className="h-4 w-4 text-green-400" />
+                    ) : isCurrent ? (
+                      <Clock className="h-4 w-4 text-primary" />
+                    ) : (
+                      <span className="h-2 w-2 rounded-full bg-border" />
+                    )}
+                  </div>
+                  <span
+                    className={`text-xs mt-1.5 font-medium text-center ${
+                      isCurrent ? "text-primary" : isDone ? "text-green-400" : "text-muted-foreground"
+                    }`}
+                  >
+                    {stepLabels[step]}
+                  </span>
+                </div>
+                {idx < arr.length - 1 && (
+                  <div
+                    className={`h-0.5 flex-1 mx-1 shrink-0 w-8 ${
+                      stepOrder[session.status] > stepIdx ? "bg-green-500/50" : "bg-border"
+                    }`}
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Actions and info */}
+        {session.status === "CONFIRMEE" && (
+          <form
+            action={async () => {
+              "use server";
+              await lancerSessionAction(session.id);
+            }}
+          >
+            <button
+              type="submit"
+              className="px-4 py-2 rounded-md text-sm font-medium bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 border border-blue-500/30 transition-colors"
+            >
+              Lancer la session
+            </button>
+          </form>
+        )}
+
+        {session.status === "EN_COURS" && (
+          <div className="space-y-3">
+            {session.launchedAt && (
+              <p className="text-sm text-muted-foreground">
+                Lancée le <span className="text-foreground font-medium">{formatDate(session.launchedAt)}</span>
+              </p>
+            )}
+            <form
+              action={async () => {
+                "use server";
+                await cloturerSessionAction(session.id);
+              }}
+            >
+              <button
+                type="submit"
+                className="px-4 py-2 rounded-md text-sm font-medium bg-gray-500/15 text-gray-300 hover:bg-gray-500/25 border border-gray-500/30 transition-colors"
+              >
+                Clôturer la session
+              </button>
+            </form>
+          </div>
+        )}
+
+        {session.status === "TERMINEE" && (
+          <div className="space-y-1">
+            {session.launchedAt && (
+              <p className="text-sm text-muted-foreground">
+                Lancée le <span className="text-foreground font-medium">{formatDate(session.launchedAt)}</span>
+              </p>
+            )}
+            {session.closedAt && (
+              <p className="text-sm text-muted-foreground">
+                Clôturée le <span className="text-foreground font-medium">{formatDate(session.closedAt)}</span>
+              </p>
+            )}
+          </div>
+        )}
+
+        {session.status === "ANNULEE" && (
+          <p className="text-sm text-red-400">Cette session a été annulée.</p>
+        )}
+
+        {session.status === "PROVISOIRE" && (
+          <p className="text-sm text-muted-foreground">
+            En attente de confirmation formateur et client avant lancement.
+          </p>
         )}
       </div>
     </div>

@@ -113,24 +113,29 @@ async function getDashboardData() {
     }),
   ]);
 
-  // Resolve client names for top clients
-  const topClientDetails = await Promise.all(
-    topClients.map(async (g) => {
-      const req = await db.trainingRequest.findUnique({
-        where: { id: g.requestId },
-        include: { client: true },
-      });
-      return { clientName: req?.client.name ?? "Inconnu", count: g._count.id };
-    })
-  );
+  // Resolve client names for top clients — batch query (avoid N+1)
+  const requestIds = topClients.map((g) => g.requestId).filter(Boolean) as string[];
+  const requests = await db.trainingRequest.findMany({
+    where: { id: { in: requestIds } },
+    include: { client: { select: { name: true } } },
+  });
+  const requestMap = new Map(requests.map((r) => [r.id, r.client.name]));
+  const topClientDetails = topClients.map((g) => ({
+    clientName: requestMap.get(g.requestId) ?? "Inconnu",
+    count: g._count.id,
+  }));
 
-  // Resolve theme labels
-  const topThemeDetails = await Promise.all(
-    topThemes.map(async (g) => {
-      const theme = await db.theme.findUnique({ where: { id: g.themeId } });
-      return { themeLabel: theme?.label ?? "Inconnu", count: g._count.id };
-    })
-  );
+  // Resolve theme labels — batch query (avoid N+1)
+  const themeIds = topThemes.map((g) => g.themeId);
+  const themes = await db.theme.findMany({
+    where: { id: { in: themeIds } },
+    select: { id: true, label: true },
+  });
+  const themeMap = new Map(themes.map((t) => [t.id, t.label]));
+  const topThemeDetails = topThemes.map((g) => ({
+    themeLabel: themeMap.get(g.themeId) ?? "Inconnu",
+    count: g._count.id,
+  }));
 
   const sessionsDelta = thisMonthSessions - lastMonthSessions;
 
@@ -160,7 +165,7 @@ export default async function DashboardPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">
-          {greeting}, {session?.user?.name?.split(" ")[0] ?? "Reda"} 👋
+          {greeting}, {session?.user?.name?.split(" ")[0] ?? "Admin"} 👋
         </h1>
         <p className="text-muted-foreground text-sm mt-1">
           Voici les actions en attente et les indicateurs du mois.
@@ -359,24 +364,25 @@ function KpiCard({
   href: string;
   color: "blue" | "yellow" | "orange" | "red";
 }) {
-  const bgMap = {
-    blue: "bg-blue-500/10",
-    yellow: "bg-yellow-500/10",
-    orange: "bg-orange-500/10",
-    red: "bg-red-500/10",
+  const colorMap = {
+    blue:   { bg: "bg-blue-500/10",   border: "border-l-blue-400",   text: "text-blue-400" },
+    yellow: { bg: "bg-yellow-500/10", border: "border-l-yellow-400", text: "text-yellow-400" },
+    orange: { bg: "bg-orange-500/10", border: "border-l-orange-400", text: "text-orange-400" },
+    red:    { bg: "bg-red-500/10",    border: "border-l-red-400",    text: "text-red-400" },
   };
+  const c = colorMap[color];
 
   return (
     <Link
       href={href}
-      className="bg-card border border-border rounded-xl p-5 hover:border-primary/50 transition-colors group"
+      className={`bg-card border border-border border-l-4 ${c.border} rounded-xl p-5 hover:bg-secondary/40 transition-colors group`}
     >
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-3xl font-bold text-foreground">{value}</p>
-          <p className="text-xs text-muted-foreground mt-1">{label}</p>
+          <p className={`text-3xl font-bold ${value > 0 ? c.text : "text-foreground"}`}>{value}</p>
+          <p className="text-xs text-muted-foreground mt-1 leading-tight">{label}</p>
         </div>
-        <div className={`p-2 rounded-lg ${bgMap[color]}`}>{icon}</div>
+        <div className={`p-2 rounded-lg ${c.bg}`}>{icon}</div>
       </div>
     </Link>
   );

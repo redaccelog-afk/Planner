@@ -1,6 +1,6 @@
 import { db } from "@ccelog/db";
 import Link from "next/link";
-import { RefreshCw, AlertCircle, Clock, CheckCircle, XCircle, Archive, Workflow } from "lucide-react";
+import { RefreshCw, AlertCircle, Clock, CheckCircle, XCircle, Archive, Workflow, ChevronRight } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { InboxSyncButton } from "@/components/demandes/inbox-sync-button";
 import { NewRequestModal } from "@/components/demandes/new-request-modal";
@@ -9,18 +9,31 @@ import { TriggerPipelineButton } from "@/components/demandes/trigger-pipeline-bu
 export const metadata = { title: "Demandes de formation" };
 
 const STATUS_CONFIG = {
-  NOUVELLE:     { label: "Nouvelle",      icon: AlertCircle,   className: "text-blue-400 bg-blue-500/10",   dot: "bg-blue-400" },
-  EN_RECHERCHE: { label: "En recherche",  icon: RefreshCw,     className: "text-purple-400 bg-purple-500/10", dot: "bg-purple-400" },
-  PROPOSEE:     { label: "Proposée",      icon: Clock,         className: "text-yellow-400 bg-yellow-500/10", dot: "bg-yellow-400" },
-  CONFIRMEE:    { label: "Confirmée",     icon: CheckCircle,   className: "text-green-400 bg-green-500/10",  dot: "bg-green-400" },
-  ANNULEE:      { label: "Annulée",       icon: XCircle,       className: "text-red-400 bg-red-500/10",     dot: "bg-red-400" },
-  CLOTUREE:     { label: "Clôturée",      icon: Archive,       className: "text-gray-400 bg-gray-500/10",   dot: "bg-gray-400" },
+  NOUVELLE:                        { label: "Nouvelle",                icon: AlertCircle,   className: "text-blue-400 bg-blue-500/10",    dot: "bg-blue-400" },
+  EN_ATTENTE_VALIDATION_FORMATEUR: { label: "En attente formateur",   icon: Clock,         className: "text-purple-400 bg-purple-500/10", dot: "bg-purple-400" },
+  VALIDEE_FORMATEUR:               { label: "Validée formateur",      icon: CheckCircle,   className: "text-teal-400 bg-teal-500/10",     dot: "bg-teal-400" },
+  EN_ATTENTE_VALIDATION_BO:        { label: "En attente Back Office", icon: Clock,         className: "text-orange-400 bg-orange-500/10", dot: "bg-orange-400" },
+  EN_RECHERCHE:                    { label: "En recherche",            icon: RefreshCw,     className: "text-purple-400 bg-purple-500/10", dot: "bg-purple-400" },
+  PROPOSEE:                        { label: "Proposée",                icon: Clock,         className: "text-yellow-400 bg-yellow-500/10", dot: "bg-yellow-400" },
+  CONFIRMEE:                       { label: "Confirmée",               icon: CheckCircle,   className: "text-green-400 bg-green-500/10",  dot: "bg-green-400" },
+  TERMINEE:                        { label: "Terminée",                icon: Archive,       className: "text-gray-400 bg-gray-500/10",    dot: "bg-gray-400" },
+  ANNULEE:                         { label: "Annulée",                 icon: XCircle,       className: "text-red-400 bg-red-500/10",      dot: "bg-red-400" },
+  CLOTUREE:                        { label: "Clôturée",                icon: Archive,       className: "text-gray-400 bg-gray-500/10",    dot: "bg-gray-400" },
 } as const;
 
 const URGENCY_LABEL = ["Normal", "Assez urgent", "Urgent", "Très urgent"];
 const URGENCY_COLOR = ["text-muted-foreground", "text-yellow-400", "text-orange-400", "text-red-400"];
 
-const KPI_STATUSES = ["NOUVELLE", "EN_RECHERCHE", "PROPOSEE", "CONFIRMEE"] as const;
+const KPI_STATUSES = ["NOUVELLE", "EN_ATTENTE_VALIDATION_FORMATEUR", "VALIDEE_FORMATEUR", "EN_ATTENTE_VALIDATION_BO", "CONFIRMEE"] as const;
+
+const WORKFLOW_STEPS = [
+  { key: "NOUVELLE",                        label: "Création" },
+  { key: "EN_ATTENTE_VALIDATION_FORMATEUR", label: "Attente formateur" },
+  { key: "VALIDEE_FORMATEUR",               label: "Validée formateur" },
+  { key: "EN_ATTENTE_VALIDATION_BO",        label: "Attente BO" },
+  { key: "CONFIRMEE",                       label: "Confirmée" },
+  { key: "TERMINEE",                        label: "Terminée" },
+] as const;
 
 export default async function DemandesPage({
   searchParams,
@@ -103,8 +116,32 @@ export default async function DemandesPage({
         </div>
       </div>
 
+      {/* Workflow CDC — chaîne de validation */}
+      <div className="flex flex-wrap items-center gap-1 bg-card border border-border rounded-xl px-4 py-3">
+        <span className="text-xs font-medium text-muted-foreground mr-2 flex-shrink-0">Workflow CDC :</span>
+        {WORKFLOW_STEPS.map((step, i) => {
+          const isActive = statusFilter === step.key;
+          const cfg = STATUS_CONFIG[step.key as keyof typeof STATUS_CONFIG];
+          return (
+            <span key={step.key} className="flex items-center gap-1">
+              <Link
+                href={`/demandes?status=${step.key}`}
+                className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                  isActive ? cfg.className + " ring-1 ring-current" : "bg-secondary text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {step.label}
+              </Link>
+              {i < WORKFLOW_STEPS.length - 1 && (
+                <ChevronRight className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+              )}
+            </span>
+          );
+        })}
+      </div>
+
       {/* KPI Strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {KPI_STATUSES.map((s) => {
           const cfg = STATUS_CONFIG[s];
           const StatusIcon = cfg.icon;

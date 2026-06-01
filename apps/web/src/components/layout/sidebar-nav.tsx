@@ -19,6 +19,8 @@ import {
   Receipt,
   ShoppingCart,
   Workflow,
+  Calendar,
+  Archive,
 } from "lucide-react";
 
 const navItems = [
@@ -26,6 +28,7 @@ const navItems = [
   { href: "/pipeline", label: "Pipeline auto", icon: Workflow },
   { href: "/demandes", label: "Demandes", icon: InboxIcon },
   { href: "/sessions", label: "Sessions", icon: CalendarDays },
+  { href: "/calendrier", label: "Calendrier", icon: Calendar },
   { href: "/formateurs", label: "Formateurs", icon: Users },
   { href: "/formateurs/preselection", label: "Présélection", icon: UserSearch, indent: true },
   { href: "/clients", label: "Clients", icon: Building2 },
@@ -35,6 +38,7 @@ const navItems = [
   { href: "/facturation", label: "Facturation", icon: Receipt },
   { href: "/achats", label: "Achats externes", icon: ShoppingCart, indent: true },
   { href: "/analytiques", label: "Analytiques", icon: TrendingUp },
+  { href: "/ged", label: "Archivage & GED", icon: Archive },
   { href: "/parametres", label: "Paramètres", icon: Settings },
 ];
 
@@ -51,11 +55,15 @@ export function SidebarNav() {
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-1">
         {navItems.map((item) => {
-          const isActive = pathname === item.href || (item.href !== "/formateurs" && pathname.startsWith(item.href + "/")) || (item.href === "/formateurs" && pathname === "/formateurs");
+          // Exact match OU sous-route directe (évite /sessions matchant /sessions123)
+          const isActive =
+            pathname === item.href ||
+            pathname.startsWith(item.href + "/");
           return (
             <Link
               key={item.href}
               href={item.href}
+              aria-current={isActive ? "page" : undefined}
               className={cn(
                 "flex items-center gap-3 py-2 rounded-md text-sm font-medium transition-colors",
                 item.indent ? "pl-8 pr-3" : "px-3",

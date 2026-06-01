@@ -125,12 +125,35 @@ export async function updateRequestStatusAction(formData: FormData) {
 
   if (!requestId || !status) throw new Error("Paramètres manquants");
 
-  const validStatuses = ["NOUVELLE", "EN_RECHERCHE", "PROPOSEE", "CONFIRMEE", "ANNULEE", "CLOTUREE"];
+  const validStatuses = [
+    "NOUVELLE",
+    "EN_ATTENTE_VALIDATION_FORMATEUR",
+    "VALIDEE_FORMATEUR",
+    "EN_ATTENTE_VALIDATION_BO",
+    "EN_RECHERCHE",
+    "PROPOSEE",
+    "CONFIRMEE",
+    "TERMINEE",
+    "ANNULEE",
+    "CLOTUREE",
+  ];
   if (!validStatuses.includes(status)) throw new Error("Statut invalide");
 
   await db.trainingRequest.update({
     where: { id: requestId },
-    data: { status: status as "NOUVELLE" | "EN_RECHERCHE" | "PROPOSEE" | "CONFIRMEE" | "ANNULEE" | "CLOTUREE" },
+    data: {
+      status: status as
+        | "NOUVELLE"
+        | "EN_ATTENTE_VALIDATION_FORMATEUR"
+        | "VALIDEE_FORMATEUR"
+        | "EN_ATTENTE_VALIDATION_BO"
+        | "EN_RECHERCHE"
+        | "PROPOSEE"
+        | "CONFIRMEE"
+        | "TERMINEE"
+        | "ANNULEE"
+        | "CLOTUREE",
+    },
   });
 
   revalidatePath("/demandes");

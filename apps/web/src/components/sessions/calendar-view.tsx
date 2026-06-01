@@ -9,7 +9,7 @@ interface Session {
   id: string;
   startDate: Date | string;
   endDate: Date | string;
-  status: "PROVISOIRE" | "CONFIRMEE" | "ANNULEE";
+  status: string;
   trainer: { fullName: string };
   theme: { code: string; label: string };
   request: { client: { name: string }; site: { city: string } };
@@ -21,10 +21,12 @@ interface CalendarViewProps {
   month: number;
 }
 
-const STATUS_STYLES = {
-  CONFIRMEE: "bg-white border-gray-300 text-gray-900",
-  PROVISOIRE: "bg-yellow-50 border-yellow-300 text-yellow-900",
-  ANNULEE: "bg-red-50 border-red-300 text-red-800 line-through opacity-60",
+const STATUS_STYLES: Record<string, string> = {
+  CONFIRMEE: "bg-green-500/15 border-green-500/30 text-green-400",
+  PROVISOIRE: "bg-yellow-500/15 border-yellow-500/30 text-yellow-400",
+  ANNULEE: "bg-red-500/15 border-red-500/30 text-red-400 line-through opacity-60",
+  EN_COURS: "bg-blue-500/15 border-blue-500/30 text-blue-400",
+  TERMINEE: "bg-gray-500/15 border-gray-500/30 text-gray-400",
 };
 
 export function CalendarView({ sessions, year, month }: CalendarViewProps) {

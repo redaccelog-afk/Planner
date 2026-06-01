@@ -124,3 +124,69 @@ export async function createInvoiceFromSessionAction(formData: FormData) {
   revalidatePath(`/sessions/${sessionId}`);
   revalidatePath("/facturation");
 }
+
+/**
+ * Lance une session (CONFIRMEE → EN_COURS) et enregistre launchedAt.
+ */
+export async function lancerSessionAction(sessionId: string) {
+  const session = await db.trainingSession.findUnique({
+    where: { id: sessionId },
+    select: { id: true, status: true },
+  });
+  if (!session) throw new Error("Session introuvable");
+
+  await db.trainingSession.update({
+    where: { id: sessionId },
+    data: {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      status: "EN_COURS" as any,
+      launchedAt: new Date(),
+    },
+  });
+
+  await db.auditLog.create({
+    data: {
+      action: "UPDATE",
+      entityType: "TrainingSession",
+      entityId: sessionId,
+      before: { status: session.status },
+      after: { status: "EN_COURS", launchedAt: new Date().toISOString() },
+    },
+  });
+
+  revalidatePath(`/sessions/${sessionId}`);
+  revalidatePath("/sessions");
+}
+
+/**
+ * Clôture une session (EN_COURS → TERMINEE) et enregistre closedAt.
+ */
+export async function cloturerSessionAction(sessionId: string) {
+  const session = await db.trainingSession.findUnique({
+    where: { id: sessionId },
+    select: { id: true, status: true },
+  });
+  if (!session) throw new Error("Session introuvable");
+
+  await db.trainingSession.update({
+    where: { id: sessionId },
+    data: {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      status: "TERMINEE" as any,
+      closedAt: new Date(),
+    },
+  });
+
+  await db.auditLog.create({
+    data: {
+      action: "UPDATE",
+      entityType: "TrainingSession",
+      entityId: sessionId,
+      before: { status: session.status },
+      after: { status: "TERMINEE", closedAt: new Date().toISOString() },
+    },
+  });
+
+  revalidatePath(`/sessions/${sessionId}`);
+  revalidatePath("/sessions");
+}

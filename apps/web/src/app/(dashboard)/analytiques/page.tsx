@@ -248,11 +248,14 @@ function AnalyticKpi({
   bad?: boolean;
 }) {
   return (
-    <div className="bg-card border border-border rounded-xl p-5">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className={`text-2xl font-bold mt-1 ${bad ? "text-red-400" : "text-foreground"}`}>
+    <div className={`bg-card border rounded-xl p-5 ${bad ? "border-red-500/30" : "border-border"}`}>
+      <p className="text-xs text-muted-foreground leading-tight">{label}</p>
+      <p className={`text-2xl font-bold mt-2 tracking-tight ${bad ? "text-red-400" : "text-foreground"}`}>
         {value}
       </p>
+      {bad && (
+        <p className="text-[10px] text-red-400/70 mt-1">Au-dessus du seuil recommandé (15%)</p>
+      )}
     </div>
   );
 }
@@ -280,21 +283,24 @@ function BarChart({
   color?: string;
 }) {
   return (
-    <div className="flex items-end gap-1 h-32">
-      {data.map((d) => (
-        <div key={d.label} className="flex-1 flex flex-col items-center gap-1 group">
-          <span className="text-[9px] text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-            {d.display}
-          </span>
-          <div
-            className={`w-full rounded-t ${color} transition-all min-h-[2px]`}
-            style={{ height: `${Math.max(d.ratio * 96, d.value > 0 ? 4 : 2)}px` }}
-          />
-          <span className="text-[9px] text-muted-foreground truncate w-full text-center">
-            {d.label}
-          </span>
-        </div>
-      ))}
+    <div className="overflow-x-auto">
+      <div className="flex items-end gap-1.5 h-36 min-w-[480px]">
+        {data.map((d) => (
+          <div key={d.label} className="flex-1 flex flex-col items-center gap-1 group min-w-[28px]">
+            <span className="text-[9px] text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap leading-tight text-center px-0.5">
+              {d.display}
+            </span>
+            <div
+              className={`w-full rounded-t ${color} hover:brightness-125 transition-all min-h-[3px]`}
+              style={{ height: `${Math.max(d.ratio * 108, d.value > 0 ? 6 : 3)}px` }}
+              title={d.display}
+            />
+            <span className="text-[9px] text-muted-foreground truncate w-full text-center leading-tight">
+              {d.label}
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

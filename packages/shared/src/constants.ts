@@ -26,13 +26,16 @@ export const WA_TEMPLATES = {
 
 // Jours de décalage pour les notifications
 export const NOTIFICATION_OFFSETS = {
-  CONFIRMATION_CLIENT: -7,
-  RAPPEL_FORMATEUR: -3,
-  DOCUMENTS_PRETS: -2,
-  RAPPEL_HOTEL_ITINERAIRE: -1,
-  DEMANDE_RAPPORT: 1,
-  RELANCE_RAPPORT: 3,
-  ENVOI_RAPPORT_CLIENT: 7,
+  RAPPEL_J7_CLIENT: -7,          // rappel client J-7
+  CONFIRMATION_CLIENT: -7,       // keep for backward compat
+  RAPPEL_FORMATEUR: -3,          // rappel formateur J-3
+  ORDRE_MISSION_AUTO: -3,        // génération ordre de mission J-3 (INTERNE only)
+  RAPPEL_J3_ALL: -3,             // rappel J-3 tous destinataires
+  DOCUMENTS_PRETS: -2,           // documents prêts J-2
+  RAPPEL_HOTEL_ITINERAIRE: -1,   // rappel hotel J-1
+  DEMANDE_RAPPORT: 1,            // demande rapport J+1
+  RELANCE_RAPPORT: 3,            // relance rapport J+3
+  ENVOI_RAPPORT_CLIENT: 7,       // envoi rapport client J+7
 } as const;
 
 export const MOROCCAN_CITIES = [

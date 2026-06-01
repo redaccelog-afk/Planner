@@ -1,0 +1,68 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# CCE LOG — Planner  ·  Netlify deployment config
+# Monorepo pnpm + Turborepo  ·  Next.js 15 App Router
+# Deploy cible : apps/web uniquement (le worker BullMQ tourne en dehors de Netlify)
+# ─────────────────────────────────────────────────────────────────────────────
+
+[build]
+  # Racine du dépôt — pnpm workspaces auto-détecté via packageManager dans package.json
+  base    = "."
+  # 1) Génère le client Prisma  2) Build Next.js
+  command = "pnpm db:generate && pnpm --filter @ccelog/web build"
+  publish = "apps/web/.next"
+
+[build.environment]
+  NODE_VERSION            = "20"
+  PNPM_VERSION            = "9"
+  NEXT_TELEMETRY_DISABLED = "1"
+
+# ─── Plugin Next.js (App Router, Server Actions, ISR, Edge middleware) ────────
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# ─── Headers de sécurité (complète ceux de next.config.ts) ───────────────────
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options          = "DENY"
+    X-Content-Type-Options   = "nosniff"
+    Referrer-Policy          = "strict-origin-when-cross-origin"
+    Permissions-Policy       = "camera=(), microphone=(), geolocation=()"
+
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    X-Robots-Tag = "noindex"
+
+# ─── Redirects ────────────────────────────────────────────────────────────────
+# Next.js gère ses propres redirects — pas de règle Netlify supplémentaire
+# (le plugin s'occupe du fallback SPA / SSR routing)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# VARIABLES D'ENVIRONNEMENT REQUISES
+# À configurer dans : Netlify > Site > Site configuration > Environment variables
+#
+# Obligatoires :
+#   DATABASE_URL            postgresql://user:pass@host:5432/ccelog?sslmode=require
+#   NEXTAUTH_SECRET         (openssl rand -base64 32)
+#   NEXTAUTH_URL            https://<ton-site>.netlify.app
+#
+# Azure AD (SSO Microsoft) :
+#   AZURE_AD_CLIENT_ID      ce94b85e-d038-4b49-8cf3-8e9df5f33b6c
+#   AZURE_AD_CLIENT_SECRET  (portail Azure)
+#   AZURE_AD_TENANT_ID      c3e845fd-4d96-49d6-aeaf-409efb5ddbe5
+#
+# Optionnelles selon les features actives :
+#   M365_ACCESS_TOKEN       (token Graph — renouvellement automatique via OAuth)
+#   WA_TOKEN                Meta Cloud API
+#   WA_PHONE_ID             ID du numéro WhatsApp Business
+#   WA_APP_SECRET           Vérification webhook WhatsApp
+#   GOOGLE_MAPS_API_KEY     Distance matrix — fallback haversine si absent
+#   ANTHROPIC_API_KEY       Parsing IA des emails / WhatsApp
+#   REDIS_URL               BullMQ — si des Server Actions enfilent des jobs
+#   CRON_SECRET             Secret pour /api/cron/notifications
+#
+# Note : le worker BullMQ (apps/worker) ne tourne pas sur Netlify.
+# Héberger le worker séparément (Railway, Render, VPS) pointant sur le même
+# DATABASE_URL et REDIS_URL.
+# ─────────────────────────────────────────────────────────────────────────────

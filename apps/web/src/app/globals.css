@@ -74,15 +74,21 @@
   }
 }
 
-/* Session status color badges */
+/* Session status color badges — dark-mode compatible */
 .session-confirmed {
-  @apply bg-white text-gray-900 border border-gray-200;
+  @apply bg-green-500/15 text-green-400 border border-green-500/30;
 }
 .session-provisional {
-  @apply bg-yellow-50 text-yellow-900 border border-yellow-200;
+  @apply bg-yellow-500/15 text-yellow-400 border border-yellow-500/30;
 }
 .session-cancelled {
-  @apply bg-red-50 text-red-900 border border-red-200;
+  @apply bg-red-500/15 text-red-400 border border-red-500/30;
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border)) hsl(var(--muted));
 }
 
 /* Calendar grid */
