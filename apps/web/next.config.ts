@@ -11,7 +11,7 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(__dirname, "../../"),
   transpilePackages: ["@ccelog/ui", "@ccelog/shared", "@ccelog/db", "@ccelog/integrations"],
   // bullmq/ioredis sont des optionnels du worker — exclure du bundle web pour éviter les warnings
-  serverExternalPackages: ["@prisma/client", "bullmq", "ioredis"],
+  serverExternalPackages: ["@prisma/client", "bullmq", "ioredis", "pizzip", "docxtemplater"],
   images: {
     domains: ["ccelog.com"],
   },
