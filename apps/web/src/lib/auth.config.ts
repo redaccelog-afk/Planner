@@ -12,19 +12,22 @@ const providers: any[] = [];
 
 // Provider Microsoft — actif uniquement si le secret Azure est configuré
 if (process.env.AZURE_AD_CLIENT_SECRET) {
+  const tenantId = process.env.AZURE_AD_TENANT_ID!;
   providers.push(
     MicrosoftEntraID({
       clientId: process.env.AZURE_AD_CLIENT_ID!,
       clientSecret: process.env.AZURE_AD_CLIENT_SECRET!,
-      // tenantId est accepté au runtime mais absent des types de next-auth v5 beta
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ...(process.env.AZURE_AD_TENANT_ID ? { tenantId: process.env.AZURE_AD_TENANT_ID } : {}) as any,
+      // Forcer le endpoint tenant-spécifique (évite AADSTS50194 sur /common)
+      issuer: `https://login.microsoftonline.com/${tenantId}/v2.0`,
       authorization: {
+        url: `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/authorize`,
         params: {
           scope:
             "openid profile email User.Read Calendars.ReadWrite Mail.ReadWrite Mail.Send offline_access",
         },
       },
+      token: `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`,
+      userinfo: "https://graph.microsoft.com/oidc/userinfo",
     })
   );
 }
