@@ -34,3 +34,6 @@ export function formatCostMAD(amount: number): string {
 export function costDelta(current: CostBreakdown, optimized: CostBreakdown): number {
   return current.total - optimized.total;
 }
+
+/** Alias utilisé dans les templates email */
+export const formatCurrency = formatCostMAD;
