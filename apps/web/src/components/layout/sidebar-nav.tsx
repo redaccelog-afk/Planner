@@ -21,9 +21,18 @@ import {
   Workflow,
   Calendar,
   Archive,
+  CheckSquare,
 } from "lucide-react";
 
-const navItems = [
+type NavItem = {
+  href: string;
+  label: string;
+  icon: React.ElementType;
+  indent?: boolean;
+  roles?: string[];
+};
+
+const navItems: NavItem[] = [
   { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
   { href: "/pipeline", label: "Pipeline auto", icon: Workflow },
   { href: "/demandes", label: "Demandes", icon: InboxIcon },
@@ -40,10 +49,18 @@ const navItems = [
   { href: "/analytiques", label: "Analytiques", icon: TrendingUp },
   { href: "/ged", label: "Archivage & GED", icon: Archive },
   { href: "/parametres", label: "Paramètres", icon: Settings },
+  { href: "/mes-validations", label: "Mes validations", icon: CheckSquare, roles: ["FORMATEUR"] },
 ];
 
-export function SidebarNav() {
+interface SidebarNavProps {
+  role?: string;
+}
+
+export function SidebarNav({ role }: SidebarNavProps) {
   const pathname = usePathname();
+  const visibleItems = navItems.filter(
+    (item) => !item.roles || (role && item.roles.includes(role))
+  );
 
   return (
     <aside className="w-60 flex-shrink-0 flex flex-col h-full bg-card border-r border-border">
@@ -54,7 +71,7 @@ export function SidebarNav() {
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-1">
-        {navItems.map((item) => {
+        {visibleItems.map((item) => {
           // Exact match OU sous-route directe (évite /sessions matchant /sessions123)
           const isActive =
             pathname === item.href ||

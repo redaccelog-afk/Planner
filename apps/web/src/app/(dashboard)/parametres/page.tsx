@@ -1,5 +1,6 @@
 import { db } from "@ccelog/db";
-import { Settings, Mail, MessageSquare, Phone, Send, CheckCircle2, AlertCircle, Link } from "lucide-react";
+import { Settings, Mail, MessageSquare, Phone, Send, CheckCircle2, AlertCircle, Link, FileText } from "lucide-react";
+import NextLink from "next/link";
 import { updateConfigAction } from "./actions";
 
 export const metadata = { title: "Paramètres" };
@@ -243,7 +244,30 @@ export default async function ParametresPage() {
         </div>
       </section>
 
-      {/* ── Section 3: Intégrations ── */}
+      {/* ── Section 3: Modèles d'attestations ── */}
+      <section className="bg-card border border-border rounded-xl overflow-hidden">
+        <div className="flex items-center gap-2 px-6 py-4 border-b border-border">
+          <FileText className="h-4 w-4 text-muted-foreground" />
+          <h2 className="font-semibold text-foreground">Modèles d&apos;attestations</h2>
+        </div>
+        <div className="px-6 py-5 flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm text-foreground font-medium">Templates CDC Module 6</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Configurez les 30 modèles d&apos;attestations paramétrables (nomenclature, HTML entête / corps / pied)
+            </p>
+          </div>
+          <NextLink
+            href="/parametres/templates"
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors shrink-0"
+          >
+            <FileText className="h-4 w-4" />
+            Gérer les modèles d&apos;attestation (30 templates CDC)
+          </NextLink>
+        </div>
+      </section>
+
+      {/* ── Section 4: Intégrations ── */}
       <section className="bg-card border border-border rounded-xl overflow-hidden">
         <div className="px-6 py-4 border-b border-border">
           <h2 className="font-semibold text-foreground">Intégrations</h2>

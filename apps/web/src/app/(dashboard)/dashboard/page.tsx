@@ -36,6 +36,7 @@ async function getDashboardData() {
     topClients,
     topThemes,
     trainerUtilization,
+    demandCounts,
   ] = await Promise.all([
     db.trainingRequest.count({ where: { status: "NOUVELLE" } }),
     db.trainingSession.count({ where: { status: "PROVISOIRE" } }),
@@ -111,6 +112,10 @@ async function getDashboardData() {
       take: 5,
       orderBy: { fullName: "asc" },
     }),
+    db.trainingRequest.groupBy({
+      by: ["status"],
+      _count: true,
+    }),
   ]);
 
   // Resolve client names for top clients — batch query (avoid N+1)
@@ -151,8 +156,18 @@ async function getDashboardData() {
     topClients: topClientDetails,
     topThemes: topThemeDetails,
     trainerUtilization,
+    demandCounts,
   };
 }
+
+const DEMAND_WORKFLOW = [
+  { status: "NOUVELLE",                        label: "Nouvelles",         colorClass: "text-blue-400",   dotClass: "bg-blue-400" },
+  { status: "EN_ATTENTE_VALIDATION_FORMATEUR", label: "Attente formateur", colorClass: "text-purple-400", dotClass: "bg-purple-400" },
+  { status: "VALIDEE_FORMATEUR",               label: "Validée formateur", colorClass: "text-teal-400",   dotClass: "bg-teal-400" },
+  { status: "EN_ATTENTE_VALIDATION_BO",        label: "Attente BO",        colorClass: "text-orange-400", dotClass: "bg-orange-400" },
+  { status: "CONFIRMEE",                       label: "Confirmées",        colorClass: "text-green-400",  dotClass: "bg-green-400" },
+  { status: "TERMINEE",                        label: "Terminées",         colorClass: "text-gray-400",   dotClass: "bg-gray-400" },
+] as const
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -202,6 +217,27 @@ export default async function DashboardPage() {
           href="/stock"
           color="red"
         />
+      </div>
+
+      {/* Workflow demandes — CDC M2 */}
+      <div className="bg-card border border-border rounded-xl">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+          <h2 className="font-semibold text-foreground">Workflow demandes</h2>
+          <Link href="/demandes" className="text-sm text-primary hover:underline">Voir toutes →</Link>
+        </div>
+        <div className="grid grid-cols-3 sm:grid-cols-6 divide-x divide-border">
+          {DEMAND_WORKFLOW.map(({ status, label, dotClass }) => {
+            const count = data.demandCounts.find(c => c.status === status)?._count ?? 0
+            return (
+              <Link key={status} href={`/demandes?status=${status}`}
+                className="flex flex-col items-center gap-1.5 py-4 hover:bg-secondary/40 transition-colors text-center">
+                <span className={`h-2 w-2 rounded-full ${dotClass}`} />
+                <span className="text-2xl font-bold text-foreground">{count}</span>
+                <span className="text-[10px] text-muted-foreground leading-tight px-2">{label}</span>
+              </Link>
+            )
+          })}
+        </div>
       </div>
 
       {/* Stats mensuelles */}
