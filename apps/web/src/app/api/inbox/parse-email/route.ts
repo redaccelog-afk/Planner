@@ -3,8 +3,6 @@ import { db } from "@ccelog/db";
 import { EMAIL_EXTRACTION_PROMPT, fuzzyMatchClient } from "@ccelog/shared";
 import type { AiEmailExtraction } from "@ccelog/shared";
 import { auth } from "@/lib/auth";
-// @ts-expect-error -- anthropic sdk loaded at runtime
-import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 
 const ParseEmailSchema = z.object({
@@ -22,7 +20,8 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { subject, body: emailBody, fromAddress, outlookMessageId } = ParseEmailSchema.parse(body);
 
-    // Appel Anthropic pour extraction IA
+    // Appel Anthropic pour extraction IA — import dynamique pour ne pas bundler le SDK
+    const { default: Anthropic } = await import("@anthropic-ai/sdk");
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
     const response = await client.messages.create({

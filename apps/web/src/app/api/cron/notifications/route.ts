@@ -1,17 +1,13 @@
 import { NextResponse } from "next/server";
-// @ts-expect-error -- bullmq is a server-only external package
 import { Queue } from "bullmq";
-// @ts-expect-error -- ioredis is a server-only external package
 import IORedis from "ioredis";
-// @ts-expect-error -- @ccelog/worker is server-side only, loaded at runtime
-import { scheduleSessionNotifications } from "@ccelog/worker/src/jobs/notification-scheduler";
 
 /**
  * Daily cron triggered by Vercel Cron (see vercel.json) or an external scheduler.
  * Secured by CRON_SECRET to prevent unauthorized calls.
  *
- * Creates a lightweight Queue client (no worker) just to enqueue jobs.
- * The actual processing is handled by apps/worker running separately.
+ * bullmq/ioredis/worker sont dans serverExternalPackages — exclus du bundle webpack,
+ * résolus à runtime par Node.js depuis apps/worker.
  */
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -39,6 +35,14 @@ export async function GET(req: Request) {
     const notificationsQueue = new Queue<{ notificationId: string }>("notifications", {
       connection,
     });
+
+    // Import du scheduler via Function() pour éviter que webpack résolve statiquement
+    // le chemin interne du workspace @ccelog/worker (non bundlé — serverExternalPackages)
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval
+    const workerImport = new Function("m", "return import(m)");
+    const { scheduleSessionNotifications } = await workerImport(
+      "@ccelog/worker/src/jobs/notification-scheduler"
+    );
 
     const result = await scheduleSessionNotifications(notificationsQueue);
 
