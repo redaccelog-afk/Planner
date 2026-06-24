@@ -32,37 +32,35 @@ if (process.env.AZURE_AD_CLIENT_SECRET) {
   );
 }
 
-// Provider de test local — stub Edge-compatible (la vérification DB se fait dans auth.ts)
-if (process.env.NODE_ENV === "development") {
-  providers.push(
-    Credentials({
-      name: "Compte de test",
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Mot de passe", type: "password" },
-      },
-      // authorize est intentionnellement vide ici (Edge Runtime) — l'implémentation
-      // réelle avec vérification DB est dans auth.ts qui étend cette config.
-      async authorize() {
-        return null;
-      },
-    })
-  );
-}
+// Provider demo — toujours actif (stub Edge-compatible, la vérif DB se fait dans auth.ts)
+providers.push(
+  Credentials({
+    name: "Accès demo",
+    credentials: {
+      email: { label: "Email", type: "email" },
+      password: { label: "Mot de passe", type: "password" },
+    },
+    async authorize() {
+      return null;
+    },
+  })
+);
 
 export const authConfig: NextAuthConfig = {
   providers,
   callbacks: {
-    async session({ session, user, token }) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    async session({ session, token }: any) {
       if (session.user) {
-        session.user.id = (user?.id ?? token?.sub) as string;
-        // role est un champ custom — cast nécessaire (next-auth v5 beta types incomplets)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (session.user as any).role = (user as { role?: string })?.role ?? "ADMIN";
+        session.user.id = token?.sub as string;
+        session.user.role = (token?.role as string) ?? "ADMIN";
       }
       return session;
     },
-    async jwt({ token, account }) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    async jwt({ token, user, account }: any) {
+      // user est présent uniquement au premier sign-in (authorize return value)
+      if (user?.role) token.role = user.role;
       if (account) {
         token.accessToken = account.access_token;
         token.refreshToken = account.refresh_token;

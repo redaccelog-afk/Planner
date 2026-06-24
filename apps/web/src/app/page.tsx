@@ -1,11 +1,8 @@
 import Link from "next/link";
 import { CcelogLogo } from "@/components/ccelog-logo";
-import { SignInButton } from "@/components/sign-in-button";
-import { DevLoginForm } from "@/components/dev-login-form";
+import { DemoLoginButtons } from "@/components/demo-login-buttons";
 
 export default function HomePage() {
-  const isDev = process.env.NODE_ENV === "development";
-
   return (
     <main className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
       <div
@@ -36,25 +33,11 @@ export default function HomePage() {
         </div>
 
         <div className="bg-card border border-border rounded-xl p-8 shadow-xl space-y-6">
-          {isDev ? (
-            <>
-              <div className="space-y-1">
-                <h2 className="text-lg font-semibold text-foreground">Accès de test</h2>
-                <p className="text-xs text-muted-foreground">Mode développement local</p>
-              </div>
-              <DevLoginForm />
-            </>
-          ) : (
-            <>
-              <div className="space-y-2">
-                <h2 className="text-lg font-semibold text-foreground">Accès sécurisé</h2>
-                <p className="text-sm text-muted-foreground">
-                  Connectez-vous avec votre compte Microsoft CCE LOG
-                </p>
-              </div>
-              <SignInButton />
-            </>
-          )}
+          <div className="space-y-1">
+            <h2 className="text-lg font-semibold text-foreground">Accès rapide</h2>
+            <p className="text-xs text-muted-foreground">Sélectionnez votre profil</p>
+          </div>
+          <DemoLoginButtons />
 
           <div className="relative">
             <div className="absolute inset-0 flex items-center">

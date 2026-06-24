@@ -16,38 +16,54 @@ const providers = authConfig.providers.filter(
   (p) => (p as { id?: string }).id !== "credentials"
 );
 
-if (process.env.NODE_ENV === "development") {
-  providers.push(
-    Credentials({
-      name: "Compte de test",
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Mot de passe", type: "password" },
-      },
-      async authorize(credentials) {
-        const email = credentials?.email as string;
-        const password = credentials?.password as string;
-        if (
-          email === process.env.DEV_ADMIN_EMAIL &&
-          password === process.env.DEV_ADMIN_PASSWORD
-        ) {
-          // Crée ou récupère l'utilisateur de test
-          const user = await db.user.upsert({
-            where: { email },
-            update: {},
-            create: {
-              email,
-              name: "Admin CCE LOG",
-              role: "ADMIN",
-            },
-          });
-          return { id: user.id, email: user.email, name: user.name };
-        }
-        return null;
-      },
-    })
-  );
-}
+// Comptes demo — actifs en permanence pour les tests et démos
+const DEMO_ACCOUNTS = [
+  { email: "admin@ccelog.demo",          name: "Admin Demo",          role: "ADMIN" as const },
+  { email: "planificateur@ccelog.demo",  name: "Planificateur Demo",  role: "PLANIFICATEUR" as const },
+  { email: "formateur@ccelog.demo",      name: "Formateur Demo",      role: "FORMATEUR" as const },
+  { email: "comptabilite@ccelog.demo",   name: "Comptabilité Demo",   role: "COMPTABILITE" as const },
+  { email: "client@ccelog.demo",         name: "Client Demo",         role: "CLIENT" as const },
+];
+
+providers.push(
+  Credentials({
+    name: "Accès demo",
+    credentials: {
+      email: { label: "Email", type: "email" },
+      password: { label: "Mot de passe", type: "password" },
+    },
+    async authorize(credentials) {
+      const email = (credentials?.email as string) ?? "";
+      const password = (credentials?.password as string) ?? "";
+
+      // Comptes demo (mot de passe fixe)
+      const demo = DEMO_ACCOUNTS.find((a) => a.email === email);
+      if (demo && password === "demo2024") {
+        const user = await db.user.upsert({
+          where: { email: demo.email },
+          update: {},
+          create: { email: demo.email, name: demo.name, role: demo.role },
+        });
+        return { id: user.id, email: user.email, name: user.name, role: user.role };
+      }
+
+      // Compte dev historique (DEV_ADMIN_EMAIL / DEV_ADMIN_PASSWORD)
+      if (
+        email === process.env.DEV_ADMIN_EMAIL &&
+        password === process.env.DEV_ADMIN_PASSWORD
+      ) {
+        const user = await db.user.upsert({
+          where: { email },
+          update: {},
+          create: { email, name: "Admin CCE LOG", role: "ADMIN" },
+        });
+        return { id: user.id, email: user.email, name: user.name, role: user.role };
+      }
+
+      return null;
+    },
+  })
+);
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
