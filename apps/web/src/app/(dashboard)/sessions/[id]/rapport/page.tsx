@@ -13,8 +13,12 @@ import {
   Star,
   FileText,
   ClipboardList,
+  PenLine,
+  CheckCircle2,
+  Clock,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import { ValidateRapportButton } from "./validate-rapport-button";
 
 export async function generateMetadata({
   params,
@@ -45,6 +49,7 @@ export default async function SessionRapportPage({
       theme: true,
       trainer: { select: { fullName: true, type: true } },
       request: { include: { client: true, site: true } },
+      rapportQA: true,
     },
   });
 
@@ -68,6 +73,8 @@ export default async function SessionRapportPage({
             dailyLogs.length,
         )
       : null;
+
+  const rapport = session.rapportQA;
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -124,6 +131,137 @@ export default async function SessionRapportPage({
           Rapport
         </Link>
       </div>
+
+      {/* ── RAPPORT QA SECTION ── */}
+      {!rapport ? (
+        /* No rapport yet — CTA */
+        <div className="bg-card border border-border rounded-xl p-8 flex flex-col items-center gap-4 text-center">
+          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+            <PenLine className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <p className="font-semibold text-foreground">Rapport non rédigé</p>
+            <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+              Répondez à quelques questions pour générer automatiquement le rapport
+              de cette session de formation.
+            </p>
+          </div>
+          <Link
+            href={`/sessions/${id}/rapport-qa`}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            <PenLine className="h-4 w-4" />
+            Rédiger le rapport
+          </Link>
+        </div>
+      ) : (
+        /* Rapport exists — show content */
+        <div className="space-y-4">
+          {/* Status banner */}
+          <div
+            className={[
+              "flex items-center justify-between gap-4 rounded-xl px-5 py-3",
+              rapport.status === "BROUILLON"
+                ? "bg-yellow-500/10 border border-yellow-500/20"
+                : rapport.status === "VALIDE_FORMATEUR"
+                  ? "bg-blue-500/10 border border-blue-500/20"
+                  : "bg-green-500/10 border border-green-500/20",
+            ].join(" ")}
+          >
+            <div className="flex items-center gap-3">
+              {rapport.status === "BROUILLON" ? (
+                <Clock className="h-4 w-4 text-yellow-400 shrink-0" />
+              ) : rapport.status === "VALIDE_FORMATEUR" ? (
+                <CheckCircle2 className="h-4 w-4 text-blue-400 shrink-0" />
+              ) : (
+                <CheckCircle2 className="h-4 w-4 text-green-400 shrink-0" />
+              )}
+              <div>
+                <p
+                  className={[
+                    "text-sm font-medium",
+                    rapport.status === "BROUILLON"
+                      ? "text-yellow-400"
+                      : rapport.status === "VALIDE_FORMATEUR"
+                        ? "text-blue-400"
+                        : "text-green-400",
+                  ].join(" ")}
+                >
+                  {rapport.status === "BROUILLON"
+                    ? "Brouillon — en attente de validation"
+                    : rapport.status === "VALIDE_FORMATEUR"
+                      ? "Validé par le formateur — en attente planificateur"
+                      : rapport.status === "VALIDE_PLANIFICATEUR"
+                        ? "Validé — prêt à envoyer"
+                        : "Envoyé au client"}
+                </p>
+                {rapport.validatedByTrainerAt && (
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Validé le{" "}
+                    {new Date(rapport.validatedByTrainerAt).toLocaleDateString("fr-MA", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    })}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {rapport.status === "BROUILLON" && (
+                <>
+                  <Link
+                    href={`/sessions/${id}/rapport-qa`}
+                    className="px-3 py-1.5 rounded-md text-xs font-medium bg-secondary text-foreground hover:bg-secondary/80 transition-colors"
+                  >
+                    Modifier
+                  </Link>
+                  <ValidateRapportButton sessionId={id} />
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Sections */}
+          <RapportSection
+            icon={<ClipboardList className="h-4 w-4" />}
+            title="Bilan général"
+            content={rapport.bilanGeneral}
+          />
+
+          <RapportSection
+            icon={<FileText className="h-4 w-4" />}
+            title="Moyens mis à disposition"
+            content={rapport.moyensDisposition}
+          />
+
+          <RapportSection
+            icon={<Users className="h-4 w-4" />}
+            title="Accueil et ambiance générale"
+            content={rapport.accueilAmbiance}
+          />
+
+          {rapport.hasVr && (
+            <RapportSection
+              icon={<Star className="h-4 w-4" />}
+              title="Exercice VR"
+              content={rapport.vrDescription ?? "Exercice VR réalisé (sans description)"}
+            />
+          )}
+
+          <RapportSection
+            icon={<BookOpen className="h-4 w-4" />}
+            title="Recommandations"
+            content={rapport.recommandations}
+          />
+
+          <RapportSection
+            icon={<CheckCircle2 className="h-4 w-4" />}
+            title="Conclusion"
+            content={rapport.conclusion}
+          />
+        </div>
+      )}
 
       {/* En-tête session */}
       <div className="bg-card border border-border rounded-xl p-6">
@@ -317,6 +455,34 @@ export default async function SessionRapportPage({
       </div>
     </div>
   );
+}
+
+// ─── Sub-components ────────────────────────────────────────────────
+
+function RapportSection({
+  icon,
+  title,
+  content,
+}: {
+  icon: React.ReactNode
+  title: string
+  content: string | null | undefined
+}) {
+  return (
+    <div className="bg-card border border-border rounded-xl p-6">
+      <h2 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+        <span className="text-muted-foreground">{icon}</span>
+        {title}
+      </h2>
+      {content ? (
+        <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">
+          {content}
+        </p>
+      ) : (
+        <p className="text-sm text-muted-foreground italic">Non renseigné</p>
+      )}
+    </div>
+  )
 }
 
 function InfoRow({

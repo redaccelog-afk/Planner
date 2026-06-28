@@ -1,18 +1,24 @@
 import { db } from "@ccelog/db";
-import { AlertTriangle, Package, Wrench, TrendingUp, TrendingDown } from "lucide-react";
+import { AlertTriangle, Package, Wrench, TrendingUp, TrendingDown, Plus } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
-import { addStockMovementAction } from "./actions";
+import { StockMovementForm } from "./StockMovementForm";
+import { ConsumableCreateForm } from "./ConsumableCreateForm";
 
 export const metadata = { title: "Stock & Matériel" };
 
 export default async function StockPage() {
-  const [consumables, materials, recentMovements] = await Promise.all([
+  const [consumables, materials, recentMovements, notifiableUsers] = await Promise.all([
     db.consumable.findMany({ orderBy: { label: "asc" } }),
     db.material.findMany({ orderBy: [{ category: "asc" }, { label: "asc" }] }),
     db.stockMovement.findMany({
       take: 20,
       orderBy: { createdAt: "desc" },
       include: { consumable: { select: { label: true, unit: true } } },
+    }),
+    db.user.findMany({
+      where: { role: { in: ["ADMIN", "PLANIFICATEUR"] } },
+      select: { id: true, name: true, email: true },
+      orderBy: { name: "asc" },
     }),
   ]);
 
@@ -69,7 +75,10 @@ export default async function StockPage() {
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground">Seuil : {c.reorderAt} {c.unit}(s)</p>
+                    <p className="text-xs text-muted-foreground">
+                      Seuil réappro : {c.reorderAt} {c.unit}(s)
+                      {c.minStock > 0 && ` · Seuil alerte : ${c.minStock}`}
+                    </p>
                   </div>
                   <div className="text-right">
                     <p className={`text-sm font-semibold ${isLow ? "text-destructive" : "text-foreground"}`}>
@@ -135,79 +144,23 @@ export default async function StockPage() {
           <h2 className="font-semibold text-foreground">Mouvement manuel</h2>
           <p className="text-xs text-muted-foreground mt-0.5">Ajout ou retrait de stock</p>
         </div>
-        <form action={addStockMovementAction} className="p-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="consumableId" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Consommable
-            </label>
-            <select
-              id="consumableId"
-              name="consumableId"
-              required
-              className="h-9 rounded-lg border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <option value="">— Sélectionner —</option>
-              {consumables.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.label} (stock: {c.stockQty} {c.unit})
-                </option>
-              ))}
-            </select>
-          </div>
+        <StockMovementForm
+          consumables={consumables.map((c) => ({
+            id: c.id,
+            label: c.label,
+            stockQty: c.stockQty,
+            unit: c.unit,
+          }))}
+        />
+      </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="direction" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Type
-            </label>
-            <select
-              id="direction"
-              name="direction"
-              required
-              className="h-9 rounded-lg border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <option value="in">Entrée (ajout)</option>
-              <option value="out">Sortie (retrait)</option>
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="quantity" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Quantité
-            </label>
-            <input
-              id="quantity"
-              name="quantity"
-              type="number"
-              min="1"
-              required
-              placeholder="ex. 10"
-              className="h-9 rounded-lg border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="reason" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Raison
-            </label>
-            <input
-              id="reason"
-              name="reason"
-              type="text"
-              required
-              placeholder="ex. réapprovisionnement"
-              className="h-9 rounded-lg border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
-
-          <div className="sm:col-span-2 lg:col-span-4 flex justify-end">
-            <button
-              type="submit"
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
-            >
-              Enregistrer le mouvement
-            </button>
-          </div>
-        </form>
+      {/* Créer un article */}
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
+        <div className="flex items-center gap-2 px-6 py-4 border-b border-border">
+          <Plus className="h-4 w-4 text-muted-foreground" />
+          <h2 className="font-semibold text-foreground">Nouvel article consommable</h2>
+        </div>
+        <ConsumableCreateForm notifiableUsers={notifiableUsers} />
       </div>
 
       {/* Mouvements récents */}

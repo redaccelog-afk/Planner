@@ -28,23 +28,43 @@ export async function POST(req: Request) {
     const newBalance = consumable.stockQty + quantity;
     if (newBalance < 0) {
       return NextResponse.json(
-        { error: `Stock insuffisant. Stock actuel : ${consumable.stockQty}, sortie demandée : ${Math.abs(quantity)}` },
+        {
+          error: `Stock insuffisant. Quantité disponible: ${consumable.stockQty}`,
+        },
         { status: 409 }
       );
     }
 
-    await db.$transaction([
-      db.consumable.update({
+    const alertTriggered = newBalance <= consumable.minStock;
+
+    await db.$transaction(async (tx) => {
+      await tx.consumable.update({
         where: { id: consumableId },
         data: { stockQty: newBalance },
-      }),
-      db.stockMovement.create({
+      });
+      await tx.stockMovement.create({
         data: { consumableId, quantity, reason, balanceAfter: newBalance },
-      }),
-    ]);
+      });
 
-    // Alerte si sous le seuil après mouvement
-    const alertTriggered = newBalance <= consumable.reorderAt;
+      if (alertTriggered && consumable.notifyUserId) {
+        // TODO: also send email to notifyUser.email
+        await tx.notification.create({
+          data: {
+            type: "ALERTE_STOCK",
+            channel: "inapp",
+            recipient: consumable.notifyUserId,
+            scheduledAt: new Date(),
+            payload: {
+              title: `Stock bas — ${consumable.label}`,
+              body: `Le stock de ${consumable.label} est descendu à ${newBalance} unités (seuil minimum: ${consumable.minStock})`,
+              consumableId,
+              newStock: newBalance,
+              minStock: consumable.minStock,
+            },
+          },
+        });
+      }
+    });
 
     return NextResponse.json({ ok: true, newBalance, alertTriggered });
   } catch (error) {
@@ -97,20 +117,43 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: "Stock insuffisant (R9)", details: issues }, { status: 409 });
     }
 
-    // Appliquer les mouvements en transaction
-    await db.$transaction(
-      movements.flatMap(({ consumableId, quantity, newBalance }) => [
-        db.consumable.update({ where: { id: consumableId }, data: { stockQty: newBalance } }),
-        db.stockMovement.create({
+    // Appliquer les mouvements en transaction + alertes stock bas
+    const needsForAlert = session.theme.consumableNeeds.map((n) => n.consumable);
+
+    await db.$transaction(async (tx) => {
+      for (const { consumableId, quantity, newBalance } of movements) {
+        await tx.consumable.update({ where: { id: consumableId }, data: { stockQty: newBalance } });
+        await tx.stockMovement.create({
           data: { consumableId, quantity, reason: `session:${sessionId}`, balanceAfter: newBalance },
-        }),
-        db.consumableUsage.upsert({
+        });
+        await tx.consumableUsage.upsert({
           where: { sessionId_consumableId: { sessionId, consumableId } },
           update: { decremented: true },
           create: { sessionId, consumableId, quantity: Math.abs(quantity), decremented: true },
-        }),
-      ])
-    );
+        });
+
+        // Task 2 — minimum stock alert after session decrement
+        const consumable = needsForAlert.find((c) => c.id === consumableId);
+        if (consumable && newBalance <= consumable.minStock && consumable.notifyUserId) {
+          // TODO: also send email to notifyUser.email
+          await tx.notification.create({
+            data: {
+              type: "ALERTE_STOCK",
+              channel: "inapp",
+              recipient: consumable.notifyUserId,
+              scheduledAt: new Date(),
+              payload: {
+                title: `Stock bas — ${consumable.label}`,
+                body: `Le stock de ${consumable.label} est descendu à ${newBalance} unités (seuil minimum: ${consumable.minStock})`,
+                consumableId,
+                newStock: newBalance,
+                minStock: consumable.minStock,
+              },
+            },
+          });
+        }
+      }
+    });
 
     return NextResponse.json({ ok: true, movements });
   } catch (error) {

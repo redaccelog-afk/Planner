@@ -9,6 +9,8 @@ const CreateConsomableSchema = z.object({
   stockQty: z.number().int().min(0).default(0),
   reorderAt: z.number().int().min(0).default(10),
   unitCost: z.number().min(0).optional(),
+  minStock: z.number().int().min(0).default(0),
+  notifyUserId: z.string().optional().nullable(),
 });
 
 export async function GET() {

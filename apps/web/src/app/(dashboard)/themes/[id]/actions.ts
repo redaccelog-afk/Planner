@@ -53,3 +53,26 @@ export async function removeConsumableNeedAction(formData: FormData) {
 
   revalidatePath(`/themes/${themeId}`);
 }
+
+export async function addThemeConsumableAction(formData: FormData) {
+  const themeId = formData.get("themeId") as string;
+  const consumableId = formData.get("consumableId") as string;
+  const quantityRaw = formData.get("quantity") as string;
+
+  if (!themeId || !consumableId) return;
+
+  const quantity = quantityRaw ? parseInt(quantityRaw, 10) : 1;
+
+  await db.themeConsumable.upsert({
+    where: { themeId_consumableId: { themeId, consumableId } },
+    update: { quantity },
+    create: { themeId, consumableId, quantity },
+  });
+
+  revalidatePath(`/themes/${themeId}`);
+}
+
+export async function removeThemeConsumableAction(id: string) {
+  const item = await db.themeConsumable.delete({ where: { id } });
+  revalidatePath(`/themes/${item.themeId}`);
+}

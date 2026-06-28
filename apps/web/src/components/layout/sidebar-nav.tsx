@@ -22,6 +22,7 @@ import {
   Calendar,
   Archive,
   CheckSquare,
+  FolderOpen,
 } from "lucide-react";
 
 type NavItem = {
@@ -43,6 +44,7 @@ const navItems: NavItem[] = [
   { href: "/clients", label: "Clients", icon: Building2 },
   { href: "/themes", label: "Thèmes", icon: BookOpen },
   { href: "/stock", label: "Stock", icon: Package },
+  { href: "/dossiers", label: "Dossiers formation", icon: FolderOpen },
   { href: "/rapports", label: "Rapports", icon: FileText },
   { href: "/facturation", label: "Facturation", icon: Receipt },
   { href: "/achats", label: "Achats externes", icon: ShoppingCart, indent: true },

@@ -2,7 +2,7 @@ import { db } from "@ccelog/db";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Clock, Users, Package, Wrench, CheckCircle, XCircle } from "lucide-react";
-import { updateThemeAction, addConsumableNeedAction, removeConsumableNeedAction } from "./actions";
+import { updateThemeAction, addConsumableNeedAction, removeConsumableNeedAction, addThemeConsumableAction, removeThemeConsumableAction } from "./actions";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -30,7 +30,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 export default async function ThemeDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  const [theme, allConsumables] = await Promise.all([
+  const [theme, allConsumables, themeConsumables] = await Promise.all([
     db.theme.findUnique({
       where: { id },
       include: {
@@ -48,12 +48,16 @@ export default async function ThemeDetailPage({ params }: { params: Promise<{ id
       },
     }),
     db.consumable.findMany({ orderBy: { label: "asc" }, select: { id: true, label: true, unit: true } }),
+    db.themeConsumable.findMany({ where: { themeId: id }, include: { consumable: true } }),
   ]);
 
   if (!theme) notFound();
 
   const linkedConsumableIds = new Set(theme.consumableNeeds.map((n) => n.consumableId));
   const availableConsumables = allConsumables.filter((c) => !linkedConsumableIds.has(c.id));
+
+  const linkedArticleIds = new Set(themeConsumables.map((tc) => tc.consumableId));
+  const availableArticles = allConsumables.filter((c) => !linkedArticleIds.has(c.id));
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -312,6 +316,87 @@ export default async function ThemeDetailPage({ params }: { params: Promise<{ id
               </div>
             ))}
           </div>
+        )}
+      </div>
+
+      {/* Articles requis */}
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
+        <div className="flex items-center gap-2 px-6 py-4 border-b border-border">
+          <Package className="h-4 w-4 text-muted-foreground" />
+          <h2 className="font-semibold text-foreground">Articles requis</h2>
+          <span className="ml-auto text-xs text-muted-foreground">{themeConsumables.length}</span>
+        </div>
+
+        {themeConsumables.length === 0 ? (
+          <p className="text-sm text-muted-foreground px-6 py-4 text-center">Aucun article requis défini.</p>
+        ) : (
+          <div className="divide-y divide-border">
+            {themeConsumables.map((tc) => (
+              <div key={tc.id} className="flex items-center px-6 py-3 gap-4">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground">{tc.consumable.label}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {tc.quantity} {tc.consumable.unit}(s)
+                  </p>
+                </div>
+                <form
+                  action={async () => {
+                    "use server";
+                    await removeThemeConsumableAction(tc.id);
+                  }}
+                >
+                  <button
+                    type="submit"
+                    className="text-xs text-destructive hover:text-destructive/80 transition-colors px-2 py-1 rounded hover:bg-destructive/10"
+                  >
+                    Retirer
+                  </button>
+                </form>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Ajouter un article requis */}
+        {availableArticles.length > 0 && (
+          <form action={addThemeConsumableAction} className="px-6 py-4 border-t border-border flex gap-3 items-end flex-wrap">
+            <input type="hidden" name="themeId" value={theme.id} />
+            <div className="flex flex-col gap-1 flex-1 min-w-40">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Article
+              </label>
+              <select
+                name="consumableId"
+                required
+                className="h-9 rounded-lg border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="">— Sélectionner —</option>
+                {availableArticles.map((c) => (
+                  <option key={c.id} value={c.id}>{c.label} ({c.unit})</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Quantité
+              </label>
+              <input
+                name="quantity"
+                type="number"
+                min="1"
+                step="1"
+                defaultValue="1"
+                required
+                className="h-9 w-24 rounded-lg border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+            <button
+              type="submit"
+              className="h-9 px-4 bg-secondary border border-border text-sm text-foreground rounded-lg hover:bg-secondary/70 transition-colors"
+            >
+              Ajouter
+            </button>
+          </form>
         )}
       </div>
     </div>

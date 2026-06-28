@@ -12,7 +12,8 @@ import {
   CalendarCheck,
   Euro,
 } from "lucide-react";
-import { startOfMonth, endOfMonth, subMonths, startOfYear } from "date-fns";
+import { startOfMonth, endOfMonth, subMonths, startOfYear, format } from "date-fns";
+import { fr } from "date-fns/locale/fr";
 
 export const metadata = { title: "Tableau de bord" };
 
@@ -23,6 +24,13 @@ async function getDashboardData() {
   const lastMonthStart = startOfMonth(subMonths(now, 1));
   const lastMonthEnd = endOfMonth(subMonths(now, 1));
   const yearStart = startOfYear(now);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const in7Days = new Date(today);
+  in7Days.setDate(in7Days.getDate() + 7);
 
   const [
     newRequests,
@@ -118,6 +126,37 @@ async function getDashboardData() {
     }),
   ]);
 
+  const sessionInclude = {
+    trainer: { select: { id: true, fullName: true } },
+    theme: { select: { id: true, label: true, code: true } },
+    request: {
+      include: {
+        client: { select: { id: true, name: true } },
+        site: { select: { id: true, label: true, city: true } },
+      },
+    },
+  } as const;
+
+  const [todaySessions, upcomingWeekSessions] = await Promise.all([
+    db.trainingSession.findMany({
+      where: {
+        startDate: { gte: today },
+        endDate: { lt: tomorrow },
+        status: { not: "ANNULEE" },
+      },
+      include: sessionInclude,
+      orderBy: { startDate: "asc" },
+    }),
+    db.trainingSession.findMany({
+      where: {
+        startDate: { gt: tomorrow, lte: in7Days },
+        status: { not: "ANNULEE" },
+      },
+      include: sessionInclude,
+      orderBy: { startDate: "asc" },
+    }),
+  ]);
+
   // Resolve client names for top clients — batch query (avoid N+1)
   const requestIds = topClients.map((g) => g.requestId).filter(Boolean) as string[];
   const requests = await db.trainingRequest.findMany({
@@ -157,6 +196,8 @@ async function getDashboardData() {
     topThemes: topThemeDetails,
     trainerUtilization,
     demandCounts,
+    todaySessions,
+    upcomingWeekSessions,
   };
 }
 
@@ -238,6 +279,64 @@ export default async function DashboardPage() {
             )
           })}
         </div>
+      </div>
+
+      {/* Planning du jour */}
+      <div className="bg-card border border-border rounded-xl">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+            <h2 className="font-semibold text-foreground">Formations aujourd'hui</h2>
+          </div>
+          <span className="text-xs text-muted-foreground">{data.todaySessions.length} session(s)</span>
+        </div>
+        {data.todaySessions.length === 0 ? (
+          <p className="px-6 py-8 text-center text-muted-foreground text-sm">Aucune formation programmée aujourd'hui</p>
+        ) : (
+          <div className="divide-y divide-border">
+            {data.todaySessions.map((s) => (
+              <Link key={s.id} href={`/sessions/${s.id}`} className="flex items-center gap-4 px-6 py-3 hover:bg-secondary/40 transition-colors">
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm text-foreground truncate">{s.theme.label}</p>
+                  <p className="text-xs text-muted-foreground">{s.request.client.name} · {s.request.site?.city ?? ''}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-xs font-medium text-foreground">{s.trainer?.fullName ?? 'Non assigné'}</p>
+                  <span className="text-xs text-muted-foreground">{format(s.startDate, 'HH:mm', { locale: fr })}</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Formations à venir (7 jours) */}
+      <div className="bg-card border border-border rounded-xl">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-blue-500" />
+            <h2 className="font-semibold text-foreground">Formations à venir (7 jours)</h2>
+          </div>
+          <span className="text-xs text-muted-foreground">{data.upcomingWeekSessions.length} session(s)</span>
+        </div>
+        {data.upcomingWeekSessions.length === 0 ? (
+          <p className="px-6 py-8 text-center text-muted-foreground text-sm">Aucune formation prévue dans les 7 prochains jours</p>
+        ) : (
+          <div className="divide-y divide-border">
+            {data.upcomingWeekSessions.map((s) => (
+              <Link key={s.id} href={`/sessions/${s.id}`} className="flex items-center gap-4 px-6 py-3 hover:bg-secondary/40 transition-colors">
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm text-foreground truncate">{s.theme.label}</p>
+                  <p className="text-xs text-muted-foreground">{s.request.client.name} · {s.request.site?.city ?? ''}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-xs font-medium text-foreground">{s.trainer?.fullName ?? 'Non assigné'}</p>
+                  <span className="text-xs text-muted-foreground">{format(s.startDate, 'EEEE d MMM', { locale: fr })}</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Stats mensuelles */}

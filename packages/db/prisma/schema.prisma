@@ -245,6 +245,26 @@ enum ExpenseCategory {
   AUTRE
 }
 
+enum DossierStatus {
+  EN_ATTENTE
+  EN_PREPARATION
+  PRET
+}
+
+enum PickupType {
+  BUREAU
+  ARMOIRE
+  COLIS_EXPRESS
+  PERSONNE
+}
+
+enum RapportStatus {
+  BROUILLON
+  VALIDE_FORMATEUR
+  VALIDE_PLANIFICATEUR
+  ENVOYE_CLIENT
+}
+
 // ─────────────────────────────────────────────
 // AUTHENTIFICATION (NextAuth v5)
 // ─────────────────────────────────────────────
@@ -259,6 +279,8 @@ model User {
   accounts      Account[]
   sessions      Session_Auth[]
   auditLogs     AuditLog[]
+  consumableNotifications Consumable[] @relation("ConsumableNotifications")
+  dossiersPreparation DossierFormation[] @relation("DossierPreparer")
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -370,6 +392,7 @@ model Theme {
   sessions        TrainingSession[]
   requestThemes   RequestTheme[]
   negotiations    NegotiationStep[]
+  consumables     ThemeConsumable[]
 
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
@@ -514,6 +537,10 @@ model Consumable {
   needs       ConsumableNeed[]
   movements   StockMovement[]
   usages      ConsumableUsage[]
+  themes      ThemeConsumable[]
+  minStock     Int       @default(0)
+  notifyUserId String?
+  notifyUser   User?     @relation("ConsumableNotifications", fields: [notifyUserId], references: [id])
 
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
@@ -531,6 +558,17 @@ model ConsumableNeed {
 
   @@id([themeId, consumableId])
   @@map("consumable_needs")
+}
+
+model ThemeConsumable {
+  id           String     @id @default(cuid())
+  themeId      String
+  consumableId String
+  quantity     Int        @default(1)
+  theme        Theme      @relation(fields: [themeId], references: [id], onDelete: Cascade)
+  consumable   Consumable @relation(fields: [consumableId], references: [id])
+  @@unique([themeId, consumableId])
+  @@map("theme_consumables")
 }
 
 // ─────────────────────────────────────────────
@@ -609,6 +647,8 @@ model TrainingSession {
   expenseItems    ExpenseItem[]
   dailyLogs       SessionDailyLog[]
   missionOrder    MissionOrder?
+  dossier         DossierFormation?
+  rapportQA       RapportQA?
   launchedAt      DateTime?
   closedAt        DateTime?
 
@@ -1181,6 +1221,13 @@ model Participant {
   dateNaissance DateTime?
   fonction    String?
   present     Boolean   @default(true)
+  cnss          String?
+  matricule     String?
+  noteTheorique Float?
+  notePratique  Float?
+  appreciation  String?
+  remarque      String?  @db.Text
+  photoUrl      String?
 
   session     TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   attestations Attestation[]
@@ -1331,4 +1378,51 @@ model SessionDailyLog {
 
   @@unique([sessionId, date])
   @@map("session_daily_logs")
+}
+
+// ─────────────────────────────────────────────
+// MODULE DOSSIER FORMATION
+// ─────────────────────────────────────────────
+
+model DossierFormation {
+  id           String          @id @default(cuid())
+  sessionId    String          @unique
+  session      TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  status       DossierStatus   @default(EN_ATTENTE)
+  pickupType   PickupType?
+  pickupDetail String?
+  preparedAt   DateTime?
+  preparerId   String?
+  preparer     User?           @relation("DossierPreparer", fields: [preparerId], references: [id])
+  notes        String?         @db.Text
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  @@map("dossier_formations")
+}
+
+// ─────────────────────────────────────────────
+// MODULE RAPPORT QA
+// ─────────────────────────────────────────────
+
+model RapportQA {
+  id                 String          @id @default(cuid())
+  sessionId          String          @unique
+  session            TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  bilanGeneral       String?         @db.Text
+  accueilAmbiance    String?         @db.Text
+  hasVr              Boolean         @default(false)
+  vrDescription      String?         @db.Text
+  moyensDisposition  String?         @db.Text
+  recommandations    String?         @db.Text
+  consignesUtilisation String?       @db.Text
+  preconisationSecurite String?      @db.Text
+  conclusion         String?         @db.Text
+  status             RapportStatus   @default(BROUILLON)
+  validatedByTrainerAt DateTime?
+  validatedByPlanAt  DateTime?
+  sentToClientAt     DateTime?
+  generatedDocUrl    String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  @@map("rapport_qa")
 }
