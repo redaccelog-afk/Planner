@@ -4,6 +4,7 @@ import {
   Mail, MessageCircle, Phone, Send, CheckCircle2, XCircle,
   AlertCircle, Clock, Zap, ArrowRight, Users, RefreshCw
 } from "lucide-react";
+import Link from "next/link";
 import { validateTrainersAction, confirmDatesAction, cancelPipelineAction } from "./actions";
 
 export const metadata = { title: "Pipeline de demandes" };
@@ -157,11 +158,18 @@ function PipelineCard({
   const proposedDates = (candidateWithDates?.proposedDates as string[] | null) ?? [];
 
   return (
-    <div className={`bg-card border rounded-xl p-4 space-y-3 transition-colors ${
+    <div className={`relative bg-card border rounded-xl p-4 space-y-3 transition-colors ${
       highlighted ? "border-amber-500/40 shadow-amber-500/5 shadow-lg" : "border-border hover:border-primary/30"
     }`}>
+      {/* Stretched link covering the whole card — interactive children sit above it via z-10 */}
+      <Link
+        href={`/demandes/${p.id}`}
+        className="absolute inset-0 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        aria-label={`Voir la demande de ${p.parsedClientName ?? p.fromAddress}`}
+      />
+
       {/* Top row */}
-      <div className="flex items-start justify-between gap-2">
+      <div className="relative z-10 flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-1">
             {/* Canal */}
@@ -202,14 +210,14 @@ function PipelineCard({
 
       {/* Message brut (compact=false) */}
       {!compact && (
-        <p className="text-xs text-muted-foreground bg-secondary/50 rounded-lg px-3 py-2 line-clamp-2 italic">
+        <p className="relative z-10 text-xs text-muted-foreground bg-secondary/50 rounded-lg px-3 py-2 line-clamp-2 italic">
           "{p.rawMessage.slice(0, 120)}{p.rawMessage.length > 120 ? "…" : ""}"
         </p>
       )}
 
       {/* Liste formateurs */}
       {!compact && p.candidates.length > 0 && (
-        <div className="space-y-1">
+        <div className="relative z-10 space-y-1">
           <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Formateurs ({p.candidates.length})</p>
           {p.candidates.slice(0, 3).map((c) => (
             <div key={c.id} className="flex items-center gap-2 text-xs">
@@ -235,7 +243,7 @@ function PipelineCard({
 
       {/* Dates proposées par formateur */}
       {proposedDates.length > 0 && (
-        <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg px-3 py-2">
+        <div className="relative z-10 bg-amber-500/5 border border-amber-500/20 rounded-lg px-3 py-2">
           <p className="text-[10px] font-semibold text-amber-400 mb-1">Dates proposées par {candidateWithDates?.trainer.fullName}</p>
           <div className="flex flex-wrap gap-1">
             {proposedDates.map((d) => (
@@ -249,7 +257,9 @@ function PipelineCard({
 
       {/* Actions */}
       {!compact && (
-        <PipelineActions pipeline={p} proposedDates={proposedDates} />
+        <div className="relative z-10">
+          <PipelineActions pipeline={p} proposedDates={proposedDates} />
+        </div>
       )}
     </div>
   );
@@ -348,13 +358,13 @@ function PipelineActions({
 
   if (p.status === "COMPLETED" && p.sessionId) {
     return (
-      <a
+      <Link
         href={`/sessions/${p.sessionId}`}
         className="text-xs text-emerald-400 flex items-center gap-1.5 hover:underline"
       >
         <CheckCircle2 className="h-3 w-3" />
         Session créée → voir le détail
-      </a>
+      </Link>
     );
   }
 

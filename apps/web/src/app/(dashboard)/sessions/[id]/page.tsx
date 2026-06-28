@@ -100,6 +100,12 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
         >
           Rapport
         </Link>
+        <Link
+          href={`/demandes/${session.request.id}`}
+          className="px-3 py-1.5 rounded-md text-xs font-medium bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors"
+        >
+          Voir la demande →
+        </Link>
       </div>
 
       {/* Header */}
@@ -110,7 +116,16 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
             <span className="text-sm font-medium text-muted-foreground">{sc.label}</span>
           </div>
           <h1 className="text-2xl font-bold text-foreground">{session.theme.label}</h1>
-          <p className="text-muted-foreground mt-1">{session.request.client.name} · {session.request.site.city}</p>
+          <p className="text-muted-foreground mt-1">
+            <Link
+              href={`/clients/${session.request.client.id}`}
+              className="text-primary hover:underline underline-offset-2 font-medium transition-colors"
+            >
+              {session.request.client.name}
+            </Link>
+            {" · "}
+            {session.request.site.city}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <OutlookSyncButton sessionId={session.id} hasOutlookId={!!session.outlookEventId} />
@@ -131,7 +146,12 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
 
         <InfoCard icon={<User className="h-4 w-4" />} label="Formateur">
           <div className="flex items-center gap-2">
-            <p className="font-medium">{session.trainer.fullName}</p>
+            <Link
+              href={`/formateurs/${session.trainer.id}`}
+              className="font-medium text-primary hover:underline underline-offset-2 transition-colors"
+            >
+              {session.trainer.fullName}
+            </Link>
             <span className={`px-1.5 py-0.5 rounded text-xs font-semibold ${isExterne ? "bg-orange-500/10 text-orange-400" : "bg-blue-500/10 text-blue-400"}`}>
               {isExterne ? "EXT" : "INT"}
             </span>

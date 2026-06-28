@@ -103,7 +103,11 @@ export default async function DemandeDetailPage({ params }: { params: Promise<{ 
               </span>
             )}
           </div>
-          <h1 className="text-2xl font-bold text-foreground">{request.client.name}</h1>
+          <h1 className="text-2xl font-bold text-foreground">
+            <Link href={`/clients/${request.client.id}`} className="text-primary hover:underline font-medium">
+              {request.client.name}
+            </Link>
+          </h1>
           <p className="text-muted-foreground mt-1">{request.site.city} · {request.site.label}</p>
         </div>
 
@@ -290,6 +294,22 @@ export default async function DemandeDetailPage({ params }: { params: Promise<{ 
               </Link>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Créer une session — état vide */}
+      {request.sessions.length === 0 && (
+        <div className="bg-card border border-border rounded-xl p-6 flex items-center justify-between gap-4">
+          <div>
+            <p className="font-semibold text-foreground">Aucune session planifiée</p>
+            <p className="text-sm text-muted-foreground mt-0.5">Cette demande n&apos;a pas encore de session associée.</p>
+          </div>
+          <Link
+            href="/sessions"
+            className="text-primary hover:underline font-medium text-sm flex-shrink-0"
+          >
+            Créer une session
+          </Link>
         </div>
       )}
 

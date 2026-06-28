@@ -133,13 +133,22 @@ export default async function ClientDetailPage({ params, searchParams }: {
             </p>
           </div>
         </div>
-        <Link
-          href={`/clients/${id}/modifier`}
-          className="flex items-center gap-2 px-4 py-2 bg-secondary hover:bg-secondary/80 text-foreground rounded-lg text-sm font-medium transition-colors border border-border"
-        >
-          <Edit className="h-4 w-4" />
-          Modifier
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/demandes?clientId=${id}`}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            Nouvelle demande
+          </Link>
+          <Link
+            href={`/clients/${id}/modifier`}
+            className="flex items-center gap-2 px-4 py-2 bg-secondary hover:bg-secondary/80 text-foreground rounded-lg text-sm font-medium transition-colors border border-border"
+          >
+            <Edit className="h-4 w-4" />
+            Modifier
+          </Link>
+        </div>
       </div>
 
       {/* KPIs */}
@@ -293,8 +302,14 @@ function OverviewTab({
       {/* 5 dernières sessions */}
       {sessions.length > 0 && (
         <div className="bg-card border border-border rounded-xl overflow-hidden">
-          <div className="px-6 py-4 border-b border-border">
+          <div className="px-6 py-4 border-b border-border flex items-center justify-between">
             <h2 className="font-semibold text-foreground">Dernières sessions</h2>
+            <Link
+              href="/sessions"
+              className="text-sm text-primary hover:underline font-medium"
+            >
+              Voir toutes les sessions →
+            </Link>
           </div>
           <div className="divide-y divide-border">
             {sessions.map((s) => (
@@ -592,8 +607,14 @@ function ContactsTab({ client }: { client: ClientWithAll }) {
 function DemandesTab({ requests }: { requests: ClientWithAll["requests"] }) {
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden">
-      <div className="px-6 py-4 border-b border-border">
+      <div className="px-6 py-4 border-b border-border flex items-center justify-between">
         <h2 className="font-semibold text-foreground">Demandes de formation</h2>
+        <Link
+          href={`/demandes`}
+          className="text-sm text-primary hover:underline font-medium"
+        >
+          Voir toutes les demandes →
+        </Link>
       </div>
 
       {requests.length === 0 ? (

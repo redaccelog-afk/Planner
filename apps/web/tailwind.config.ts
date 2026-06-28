@@ -47,6 +47,13 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        sidebar: {
+          DEFAULT: "hsl(var(--sidebar))",
+          foreground: "hsl(var(--sidebar-foreground))",
+          muted: "hsl(var(--sidebar-muted))",
+          primary: "hsl(var(--sidebar-primary))",
+          border: "hsl(var(--sidebar-border))",
+        },
         // CCE LOG brand colors
         ccelog: {
           blue: "#1B4F8A",

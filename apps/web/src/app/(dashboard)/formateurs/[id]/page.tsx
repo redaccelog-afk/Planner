@@ -179,9 +179,9 @@ export default async function FormateurDetailPage({ params }: { params: Promise<
           </div>
           <Link
             href={`/formateurs/${id}/convention`}
-            className="text-xs text-primary hover:underline"
+            className="text-xs text-primary hover:underline font-medium"
           >
-            Gérer →
+            Convention cadre
           </Link>
         </div>
       )}
@@ -509,10 +509,10 @@ export default async function FormateurDetailPage({ params }: { params: Promise<
                 <h2 className="font-semibold text-foreground">Dernières sessions</h2>
               </div>
               <Link
-                href={`/sessions?trainer=${id}`}
-                className="text-xs text-primary hover:underline"
+                href={`/sessions?trainerId=${id}`}
+                className="text-xs text-primary hover:underline font-medium"
               >
-                Voir tout →
+                Voir les sessions →
               </Link>
             </div>
 
@@ -597,7 +597,7 @@ export default async function FormateurDetailPage({ params }: { params: Promise<
                 </h3>
                 <Link
                   href={`/formateurs/${id}/convention`}
-                  className="text-xs text-primary hover:underline"
+                  className="text-xs text-primary hover:underline font-medium"
                 >
                   Gérer →
                 </Link>
@@ -646,9 +646,9 @@ export default async function FormateurDetailPage({ params }: { params: Promise<
               label="Modifier le profil"
             />
             <QuickLink
-              href={`/sessions?trainer=${id}`}
+              href={`/sessions?trainerId=${id}`}
               icon={<CalendarDays className="h-3.5 w-3.5" />}
-              label="Toutes les sessions"
+              label="Voir les sessions"
             />
           </div>
         </div>

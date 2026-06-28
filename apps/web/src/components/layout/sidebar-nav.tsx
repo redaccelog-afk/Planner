@@ -63,9 +63,9 @@ export function SidebarNav({ role }: SidebarNavProps) {
   );
 
   return (
-    <aside className="w-60 flex-shrink-0 flex flex-col h-full bg-card border-r border-border">
+    <aside className="sidebar-dark w-60 flex-shrink-0 flex flex-col h-full">
       {/* Logo */}
-      <div className="flex items-center gap-3 px-4 h-14 border-b border-border">
+      <div className="flex items-center gap-3 px-4 h-14" style={{ borderBottom: "1px solid hsl(var(--sidebar-border))" }}>
         <CcelogLogo className="h-8 w-auto" showText />
       </div>
 
@@ -85,8 +85,8 @@ export function SidebarNav({ role }: SidebarNavProps) {
                 "flex items-center gap-3 py-2 rounded-md text-sm font-medium transition-colors",
                 item.indent ? "pl-8 pr-3" : "px-3",
                 isActive
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  ? "bg-sidebar-primary/20 text-sidebar-primary"
+                  : "text-sidebar-foreground/70 hover:bg-sidebar-muted hover:text-sidebar-foreground"
               )}
             >
               <item.icon className="h-4 w-4 flex-shrink-0" />
@@ -97,8 +97,8 @@ export function SidebarNav({ role }: SidebarNavProps) {
       </nav>
 
       {/* Footer */}
-      <div className="px-4 py-3 border-t border-border">
-        <p className="text-xs text-muted-foreground">CCE LOG v2.0</p>
+      <div className="px-4 py-3" style={{ borderTop: "1px solid hsl(var(--sidebar-border))" }}>
+        <p className="text-xs text-sidebar-foreground/50">CCE LOG v2.0</p>
       </div>
     </aside>
   );
