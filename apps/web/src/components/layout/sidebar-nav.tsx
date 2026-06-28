@@ -43,8 +43,8 @@ const navItems: NavItem[] = [
   { href: "/formateurs/preselection", label: "Présélection", icon: UserSearch, indent: true },
   { href: "/clients", label: "Clients", icon: Building2 },
   { href: "/themes", label: "Thèmes", icon: BookOpen },
-  { href: "/stock", label: "Stock", icon: Package },
-  { href: "/dossiers", label: "Dossiers formation", icon: FolderOpen },
+  { href: "/stock", label: "Stock", icon: Package, roles: ["ADMIN", "PLANIFICATEUR", "PREPARATEUR"] },
+  { href: "/dossiers", label: "Dossiers formation", icon: FolderOpen, roles: ["ADMIN", "PLANIFICATEUR", "PREPARATEUR"] },
   { href: "/rapports", label: "Rapports", icon: FileText },
   { href: "/facturation", label: "Facturation", icon: Receipt },
   { href: "/achats", label: "Achats externes", icon: ShoppingCart, indent: true },
@@ -58,11 +58,14 @@ interface SidebarNavProps {
   role?: string;
 }
 
+const PREPARATEUR_HREFS = new Set(["/dashboard", "/dossiers", "/stock"]);
+
 export function SidebarNav({ role }: SidebarNavProps) {
   const pathname = usePathname();
-  const visibleItems = navItems.filter(
-    (item) => !item.roles || (role && item.roles.includes(role))
-  );
+  const visibleItems = navItems.filter((item) => {
+    if (role === "PREPARATEUR") return PREPARATEUR_HREFS.has(item.href);
+    return !item.roles || (role && item.roles.includes(role));
+  });
 
   return (
     <aside className="sidebar-dark w-60 flex-shrink-0 flex flex-col h-full">

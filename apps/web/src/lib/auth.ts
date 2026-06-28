@@ -22,6 +22,7 @@ const DEMO_ACCOUNTS = [
   { email: "planificateur@ccelog.demo",  name: "Planificateur Demo",  role: "PLANIFICATEUR" as const },
   { email: "formateur@ccelog.demo",      name: "Formateur Demo",      role: "FORMATEUR" as const },
   { email: "comptabilite@ccelog.demo",   name: "Comptabilité Demo",   role: "COMPTABILITE" as const },
+  { email: "preparateur@ccelog.demo",    name: "Préparateur Demo",    role: "PREPARATEUR" as const },
   { email: "client@ccelog.demo",         name: "Client Demo",         role: "CLIENT" as const },
 ];
 

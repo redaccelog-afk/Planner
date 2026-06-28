@@ -33,6 +33,13 @@ const PROFILES = [
     icon: "💼",
   },
   {
+    role: "PREPARATEUR",
+    label: "Préparateur dossiers",
+    email: "preparateur@ccelog.demo",
+    color: "bg-teal-600 hover:bg-teal-700",
+    icon: "📦",
+  },
+  {
     role: "CLIENT",
     label: "Client",
     email: "client@ccelog.demo",
