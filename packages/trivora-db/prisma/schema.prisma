@@ -1,0 +1,184 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("TRIVORA_DATABASE_URL")
+}
+
+enum QuestionType {
+  MCQ
+  TRUE_FALSE
+  POLL
+  PUZZLE
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+}
+
+enum Visibility {
+  PRIVATE
+  PUBLIC
+}
+
+enum SessionStatus {
+  LOBBY
+  QUESTION
+  REVEAL
+  LEADERBOARD
+  ENDED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  avatarColor  String   @default("#7C3AED")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  quizzes  Quiz[]
+  sessions GameSession[]
+
+  @@map("users")
+}
+
+model Quiz {
+  id             String     @id @default(cuid())
+  ownerId        String
+  title          String
+  description    String?
+  coverImageUrl  String?
+  category       String?
+  language       String     @default("fr")
+  visibility     Visibility @default(PRIVATE)
+  clonedFromId   String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  owner     User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  questions Question[]
+  sessions  GameSession[]
+
+  @@index([ownerId])
+  @@index([visibility])
+  @@map("quizzes")
+}
+
+model Question {
+  id          String       @id @default(cuid())
+  quizId      String
+  order       Int
+  type        QuestionType @default(MCQ)
+  text        String
+  mediaUrl    String?
+  mediaType   MediaType?
+  timeLimitSec Int         @default(20)
+  points      Int          @default(1000)
+
+  quiz    Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  choices Choice[]
+  answers PlayerAnswer[]
+
+  @@index([quizId])
+  @@map("questions")
+}
+
+model Choice {
+  id          String  @id @default(cuid())
+  questionId  String
+  order       Int
+  text        String
+  isCorrect   Boolean @default(false)
+  puzzlePosition Int?
+
+  question Question       @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  answers  PlayerAnswer[]
+
+  @@index([questionId])
+  @@map("choices")
+}
+
+model GameSession {
+  id                  String        @id @default(cuid())
+  pin                 String        @unique
+  quizId              String
+  hostId              String
+  status              SessionStatus @default(LOBBY)
+  currentQuestionIndex Int          @default(0)
+  currentQuestionStartedAt DateTime?
+  teamMode            Boolean       @default(false)
+  createdAt           DateTime      @default(now())
+  startedAt           DateTime?
+  endedAt             DateTime?
+
+  quiz    Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  host    User     @relation(fields: [hostId], references: [id], onDelete: Cascade)
+  teams   Team[]
+  players Player[]
+  answers PlayerAnswer[]
+
+  @@index([quizId])
+  @@index([hostId])
+  @@map("game_sessions")
+}
+
+model Team {
+  id        String @id @default(cuid())
+  sessionId String
+  name      String
+  color     String
+
+  session GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  players Player[]
+
+  @@index([sessionId])
+  @@map("teams")
+}
+
+model Player {
+  id          String   @id @default(cuid())
+  sessionId   String
+  teamId      String?
+  nickname    String
+  avatarColor String   @default("#7C3AED")
+  totalScore  Int      @default(0)
+  connected   Boolean  @default(true)
+  joinedAt    DateTime @default(now())
+
+  session GameSession    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  team    Team?          @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  answers PlayerAnswer[]
+
+  @@unique([sessionId, nickname])
+  @@index([sessionId])
+  @@map("players")
+}
+
+model PlayerAnswer {
+  id             String   @id @default(cuid())
+  sessionId      String
+  playerId       String
+  questionId     String
+  choiceId       String?
+  puzzleOrderJson Json?
+  timeMs         Int
+  isCorrect      Boolean
+  pointsAwarded  Int      @default(0)
+  answeredAt     DateTime @default(now())
+
+  session  GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  player   Player      @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  question Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  choice   Choice?     @relation(fields: [choiceId], references: [id], onDelete: SetNull)
+
+  @@unique([playerId, questionId])
+  @@index([sessionId])
+  @@index([questionId])
+  @@map("player_answers")
+}
