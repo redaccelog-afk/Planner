@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { signHostToken } from "@trivora/shared";
+import { signHostToken } from "@trivora/shared/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import HostGame from "@/components/HostGame";
@@ -11,7 +11,7 @@ export default async function HostSessionPage({ params }: { params: Promise<{ se
 
   const gameSession = await prisma.gameSession.findUnique({
     where: { id: sessionId },
-    include: { quiz: { select: { title: true } } },
+    include: { quiz: { select: { title: true, backgroundTheme: true, musicTheme: true } } },
   });
   if (!gameSession || gameSession.hostId !== session.user.id) notFound();
 
@@ -26,6 +26,8 @@ export default async function HostSessionPage({ params }: { params: Promise<{ se
       quizTitle={gameSession.quiz.title}
       hostToken={hostToken}
       teamMode={gameSession.teamMode}
+      backgroundTheme={gameSession.quiz.backgroundTheme}
+      musicTheme={gameSession.quiz.musicTheme}
     />
   );
 }

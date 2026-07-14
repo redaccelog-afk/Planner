@@ -10,6 +10,7 @@ import {
   type PublicPlayer,
   type GameSessionStatus,
   type TeamStanding,
+  type QuizTheme,
 } from "@trivora/shared";
 
 export type IOServer = Server<ClientToServerEvents, ServerToClientEvents>;
@@ -23,6 +24,7 @@ type LoadedQuestion = {
   text: string;
   mediaUrl: string | null;
   mediaType: "IMAGE" | "VIDEO" | null;
+  mediaDisplayMode: "BEFORE" | "WITH" | "FULLSCREEN";
   timeLimitSec: number;
   points: number;
   choices: LoadedChoice[];
@@ -68,6 +70,7 @@ export class GameRoom {
   constructor(
     private io: IOServer,
     session: { id: string; pin: string; hostId: string; teamMode: boolean },
+    readonly theme: QuizTheme,
     private questions: LoadedQuestion[],
     private onEmpty: () => void
   ) {
@@ -113,7 +116,10 @@ export class GameRoom {
     socket.emit("game:status", { status: this.status });
   }
 
-  async addPlayer(socket: IOSocket, nickname: string): Promise<{ ok: true; playerId: string } | { ok: false; error: string }> {
+  async addPlayer(
+    socket: IOSocket,
+    nickname: string
+  ): Promise<{ ok: true; playerId: string; theme: QuizTheme } | { ok: false; error: string }> {
     if (this.status !== "LOBBY") {
       return { ok: false, error: "La partie a déjà commencé." };
     }
@@ -141,7 +147,7 @@ export class GameRoom {
       socket.join(this.roomChannel);
       this.resetCleanupTimer();
       this.io.to(this.roomChannel).emit("lobby:update", { pin: this.pin, players: this.publicPlayers(), teams: this.publicTeams() });
-      return { ok: true, playerId: player.id };
+      return { ok: true, playerId: player.id, theme: this.theme };
     } catch {
       return { ok: false, error: "Impossible de rejoindre la partie." };
     }
@@ -237,6 +243,7 @@ export class GameRoom {
       text: question.text,
       mediaUrl: question.mediaUrl,
       mediaType: question.mediaType,
+      mediaDisplayMode: question.mediaDisplayMode,
       timeLimitSec: question.timeLimitSec,
       choices: question.choices
         .sort((a, b) => a.order - b.order)

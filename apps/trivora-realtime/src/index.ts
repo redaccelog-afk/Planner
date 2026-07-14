@@ -3,7 +3,8 @@ import { createServer } from "node:http";
 import express from "express";
 import cors from "cors";
 import { Server } from "socket.io";
-import { verifyHostToken, type ClientToServerEvents, type ServerToClientEvents } from "@trivora/shared";
+import type { ClientToServerEvents, ServerToClientEvents } from "@trivora/shared";
+import { verifyHostToken } from "@trivora/shared/server";
 import { prisma } from "@trivora/db";
 import { getRoomBySessionId, loadOrCreateRoom, getRoomByPin } from "./rooms";
 

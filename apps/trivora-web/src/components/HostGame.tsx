@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getSocket } from "@/lib/socket";
+import { BACKGROUND_THEMES, DEFAULT_BACKGROUND_THEME } from "@trivora/shared";
 import type {
   PublicPlayer,
   PublicQuestion,
@@ -12,9 +13,12 @@ import type {
 } from "@trivora/shared";
 import QuestionTimer from "@/components/QuestionTimer";
 import PlayerBubbles from "@/components/PlayerBubbles";
-import Podium from "@/components/Podium";
+import PodiumReveal from "@/components/PodiumReveal";
 import AnswerDistributionChart from "@/components/AnswerDistributionChart";
+import MediaRenderer from "@/components/MediaRenderer";
+import MusicToggle from "@/components/MusicToggle";
 import { toPlayerPodium, toTeamPodium } from "@/lib/leaderboard";
+import { musicPlayer } from "@/lib/musicPlayer";
 
 export default function HostGame({
   sessionId,
@@ -22,22 +26,29 @@ export default function HostGame({
   quizTitle,
   hostToken,
   teamMode,
+  backgroundTheme,
+  musicTheme,
 }: {
   sessionId: string;
   pin: string;
   quizTitle: string;
   hostToken: string;
   teamMode: boolean;
+  backgroundTheme: string;
+  musicTheme: string | null;
 }) {
   const [status, setStatus] = useState<GameSessionStatus>("LOBBY");
   const [players, setPlayers] = useState<PublicPlayer[]>([]);
   const [teams, setTeams] = useState<{ id: string; name: string; color: string }[]>([]);
   const [teamCount, setTeamCount] = useState(2);
   const [question, setQuestion] = useState<PublicQuestion | null>(null);
+  const [mediaOnlyPhase, setMediaOnlyPhase] = useState(false);
   const [answerCount, setAnswerCount] = useState({ answeredCount: 0, playerCount: 0 });
   const [reveal, setReveal] = useState<RevealPayload | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const theme = BACKGROUND_THEMES.find((t) => t.key === backgroundTheme) ?? BACKGROUND_THEMES.find((t) => t.key === DEFAULT_BACKGROUND_THEME)!;
 
   useEffect(() => {
     const socket = getSocket();
@@ -53,6 +64,12 @@ export default function HostGame({
       setQuestion(payload);
       setReveal(null);
       setAnswerCount({ answeredCount: 0, playerCount: players.length });
+      if (payload.mediaUrl && payload.mediaDisplayMode === "BEFORE") {
+        setMediaOnlyPhase(true);
+        setTimeout(() => setMediaOnlyPhase(false), 3000);
+      } else {
+        setMediaOnlyPhase(false);
+      }
     });
     socket.on("game:answerCount", setAnswerCount);
     socket.on("game:reveal", setReveal);
@@ -68,25 +85,30 @@ export default function HostGame({
       socket.off("game:leaderboard");
       socket.off("error");
       socket.disconnect();
+      musicPlayer.stop();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, hostToken]);
+
+  useEffect(() => {
+    if (musicTheme && (status === "LOBBY" || status === "QUESTION" || status === "REVEAL" || status === "LEADERBOARD")) {
+      musicPlayer.play(musicTheme);
+    } else if (status === "ENDED") {
+      musicPlayer.stop();
+    }
+  }, [musicTheme, status]);
 
   function next() {
     getSocket().emit("host:next");
   }
 
-  if (error) {
-    return (
-      <main className="flex min-h-screen items-center justify-center">
-        <p className="card p-8 text-red-300">{error}</p>
-      </main>
-    );
-  }
+  let content: React.ReactNode;
 
-  if (status === "LOBBY") {
-    return (
-      <main className="flex min-h-screen flex-col items-center justify-center gap-8 p-8">
+  if (error) {
+    content = <p className="card p-8 text-red-300">{error}</p>;
+  } else if (status === "LOBBY") {
+    content = (
+      <div className="flex flex-col items-center gap-8">
         <p className="text-white/60">{quizTitle}</p>
         <div className="card px-12 py-8 text-center">
           <p className="text-sm uppercase tracking-widest text-white/60">Code de la partie</p>
@@ -145,40 +167,55 @@ export default function HostGame({
         >
           Démarrer ({players.length} joueur{players.length > 1 ? "s" : ""})
         </button>
-      </main>
+      </div>
     );
-  }
-
-  if (status === "QUESTION" && question) {
-    return (
-      <main className="flex min-h-screen flex-col items-center gap-8 p-8">
-        <div className="flex w-full max-w-3xl items-center justify-between text-white/60">
+  } else if (status === "QUESTION" && question) {
+    const hasMedia = Boolean(question.mediaUrl);
+    const fullscreen = hasMedia && question.mediaDisplayMode === "FULLSCREEN";
+    content = (
+      <div className="relative flex w-full flex-1 flex-col items-center gap-8">
+        {fullscreen && question.mediaUrl && (
+          <MediaRenderer
+            url={question.mediaUrl}
+            type={question.mediaType}
+            className="absolute inset-0 h-full w-full object-cover opacity-40"
+          />
+        )}
+        <div className="relative z-10 flex w-full max-w-3xl items-center justify-between text-white/60">
           <span>
             Question {question.index + 1} / {question.total}
           </span>
           <QuestionTimer startedAt={question.startedAt} timeLimitSec={question.timeLimitSec} />
         </div>
-        <h2 className="text-center font-display text-3xl font-bold">{question.text}</h2>
-        <div className="grid w-full max-w-3xl grid-cols-2 gap-4">
-          {question.choices.map((c, i) => (
-            <div key={c.id} className={`card p-4 text-lg font-semibold ${ANSWER_COLORS[i % ANSWER_COLORS.length]}`}>
-              {c.text}
-            </div>
-          ))}
-        </div>
-        <p className="text-white/60">
-          {answerCount.answeredCount} / {players.length} ont répondu
-        </p>
-        <button onClick={next} className="btn-secondary">
-          Voir les résultats
-        </button>
-      </main>
-    );
-  }
 
-  if (status === "REVEAL" && reveal && question) {
-    return (
-      <main className="flex min-h-screen flex-col items-center gap-8 p-8">
+        {mediaOnlyPhase && question.mediaUrl ? (
+          <MediaRenderer url={question.mediaUrl} type={question.mediaType} className="relative z-10 max-h-96 max-w-2xl rounded-xl" />
+        ) : (
+          <>
+            {hasMedia && question.mediaUrl && !fullscreen && question.mediaDisplayMode === "WITH" && (
+              <MediaRenderer url={question.mediaUrl} type={question.mediaType} className="relative z-10 max-h-56 rounded-xl" />
+            )}
+            <h2 className="relative z-10 text-center font-display text-3xl font-bold">{question.text}</h2>
+            <div className="relative z-10 grid w-full max-w-3xl grid-cols-2 gap-4">
+              {question.choices.map((c, i) => (
+                <div key={c.id} className={`card p-4 text-lg font-semibold ${ANSWER_COLORS[i % ANSWER_COLORS.length]}`}>
+                  {c.text}
+                </div>
+              ))}
+            </div>
+            <p className="relative z-10 text-white/60">
+              {answerCount.answeredCount} / {players.length} ont répondu
+            </p>
+            <button onClick={next} className="relative z-10 btn-secondary">
+              Voir les résultats
+            </button>
+          </>
+        )}
+      </div>
+    );
+  } else if (status === "REVEAL" && reveal && question) {
+    content = (
+      <div className="flex flex-col items-center gap-8">
         <h2 className="text-center font-display text-2xl font-bold">{question.text}</h2>
         <AnswerDistributionChart question={question} reveal={reveal} />
         <p className="text-white/60">
@@ -187,17 +224,15 @@ export default function HostGame({
         <button onClick={next} className="btn-primary">
           Classement
         </button>
-      </main>
+      </div>
     );
-  }
-
-  if (status === "LEADERBOARD" && leaderboard) {
+  } else if (status === "LEADERBOARD" && leaderboard) {
     const rows =
       teamMode && leaderboard.teams
         ? leaderboard.teams.map((t) => ({ id: t.id, label: t.name, score: t.totalScore }))
         : leaderboard.players.map((p) => ({ id: p.id, label: p.nickname, score: p.totalScore }));
-    return (
-      <main className="flex min-h-screen flex-col items-center gap-8 p-8">
+    content = (
+      <div className="flex flex-col items-center gap-8">
         <h2 className="font-display text-3xl font-bold">Classement</h2>
         <ol className="w-full max-w-md space-y-2">
           {rows.slice(0, 10).map((r, i) => (
@@ -212,17 +247,15 @@ export default function HostGame({
         <button onClick={next} className="btn-primary">
           Question suivante
         </button>
-      </main>
+      </div>
     );
-  }
-
-  if (status === "ENDED" && leaderboard) {
+  } else if (status === "ENDED" && leaderboard) {
     const podiumEntries =
       teamMode && leaderboard.teams ? toTeamPodium(leaderboard.teams) : toPlayerPodium(leaderboard.players);
-    return (
-      <main className="flex min-h-screen flex-col items-center gap-8 p-8">
+    content = (
+      <div className="flex flex-col items-center gap-8">
         <h2 className="font-display text-3xl font-bold">Partie terminée 🎉</h2>
-        <Podium entries={podiumEntries} />
+        <PodiumReveal entries={podiumEntries} />
         <div className="flex gap-3">
           <Link href={`/reports/${sessionId}`} className="btn-primary">
             Voir le rapport
@@ -231,13 +264,19 @@ export default function HostGame({
             Retour au tableau de bord
           </Link>
         </div>
-      </main>
+      </div>
     );
+  } else {
+    content = <p className="text-white/60">Connexion...</p>;
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center">
-      <p className="text-white/60">Connexion...</p>
+    <main
+      className="flex min-h-screen flex-col items-center justify-center gap-8 overflow-hidden p-8"
+      style={{ background: theme.gradient }}
+    >
+      <MusicToggle />
+      {content}
     </main>
   );
 }

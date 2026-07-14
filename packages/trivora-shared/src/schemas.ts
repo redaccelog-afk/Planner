@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const questionTypeSchema = z.enum(["MCQ", "TRUE_FALSE", "POLL", "PUZZLE"]);
 export const mediaTypeSchema = z.enum(["IMAGE", "VIDEO"]);
+export const mediaDisplayModeSchema = z.enum(["BEFORE", "WITH", "FULLSCREEN"]);
 export const visibilitySchema = z.enum(["PRIVATE", "PUBLIC"]);
 
 export const choiceInputSchema = z.object({
@@ -16,6 +17,7 @@ export const questionInputSchema = z.object({
   text: z.string().min(1).max(300),
   mediaUrl: z.string().url().optional().nullable(),
   mediaType: mediaTypeSchema.optional().nullable(),
+  mediaDisplayMode: mediaDisplayModeSchema.default("WITH"),
   timeLimitSec: z.number().int().min(5).max(120).default(20),
   points: z.number().int().min(0).max(2000).default(1000),
   choices: z.array(choiceInputSchema).min(2).max(6),
@@ -27,6 +29,8 @@ export const quizInputSchema = z.object({
   coverImageUrl: z.string().url().optional().nullable(),
   category: z.string().max(60).optional().nullable(),
   visibility: visibilitySchema.default("PRIVATE"),
+  backgroundTheme: z.string().min(1).max(40).default("cce_log"),
+  musicTheme: z.string().max(40).optional().nullable(),
   questions: z.array(questionInputSchema).min(1).max(50),
 });
 

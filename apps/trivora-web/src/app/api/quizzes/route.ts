@@ -38,6 +38,7 @@ export async function POST(request: Request) {
           text: q.text,
           mediaUrl: q.mediaUrl,
           mediaType: q.mediaType,
+          mediaDisplayMode: q.mediaDisplayMode,
           timeLimitSec: q.timeLimitSec,
           points: q.points,
           choices: {
