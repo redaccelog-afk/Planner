@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { registerSchema, hashPassword } from "@trivora/shared";
+import { registerSchema } from "@trivora/shared";
+import { hashPassword } from "@trivora/shared/server";
 import { prisma } from "@/lib/db";
 
 export async function POST(request: Request) {

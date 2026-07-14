@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import ExportCsvButton from "@/components/ExportCsvButton";
 
 export default async function ReportDetailPage({ params }: { params: Promise<{ sessionId: string }> }) {
   const { sessionId } = await params;
@@ -37,11 +36,9 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ s
     <div className="mx-auto max-w-5xl space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="font-display text-2xl font-bold">Rapport — {gameSession.quiz.title}</h1>
-        <ExportCsvButton
-          filename={`trivora-${gameSession.pin}.csv`}
-          questions={questions.map((q, i) => `Q${i + 1}: ${q.text}`)}
-          rows={rows}
-        />
+        <a href={`/api/sessions/${gameSession.id}/export`} className="btn-secondary" download>
+          Télécharger le rapport Excel
+        </a>
       </div>
 
       <div className="card overflow-x-auto p-4">

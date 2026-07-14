@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { generatePin, signHostToken } from "@trivora/shared";
+import { generatePin, signHostToken } from "@trivora/shared/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 

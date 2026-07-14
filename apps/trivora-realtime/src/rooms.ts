@@ -26,6 +26,7 @@ export async function loadOrCreateRoom(io: IOServer, sessionId: string): Promise
   const room = new GameRoom(
     io,
     { id: session.id, pin: session.pin, hostId: session.hostId, teamMode: session.teamMode },
+    { backgroundTheme: session.quiz.backgroundTheme, musicTheme: session.quiz.musicTheme },
     session.quiz.questions.map((q) => ({
       id: q.id,
       order: q.order,
@@ -33,6 +34,7 @@ export async function loadOrCreateRoom(io: IOServer, sessionId: string): Promise
       text: q.text,
       mediaUrl: q.mediaUrl,
       mediaType: q.mediaType,
+      mediaDisplayMode: q.mediaDisplayMode,
       timeLimitSec: q.timeLimitSec,
       points: q.points,
       choices: q.choices.map((c) => ({

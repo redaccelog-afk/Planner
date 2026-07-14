@@ -1,5 +1,5 @@
 import { PrismaClient } from "../src/generated/client";
-import { hashPassword } from "@trivora/shared";
+import { hashPassword } from "@trivora/shared/server";
 
 const prisma = new PrismaClient();
 

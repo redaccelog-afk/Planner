@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { BACKGROUND_THEMES, MUSIC_THEMES, DEFAULT_BACKGROUND_THEME, DEFAULT_MUSIC_THEME } from "@trivora/shared";
+import { musicPlayer } from "@/lib/musicPlayer";
 
 type ChoiceForm = { id?: string; text: string; isCorrect: boolean };
 type QuestionForm = {
@@ -9,6 +11,8 @@ type QuestionForm = {
   type: "MCQ" | "TRUE_FALSE" | "POLL" | "PUZZLE";
   text: string;
   mediaUrl?: string | null;
+  mediaType?: "IMAGE" | "VIDEO" | null;
+  mediaDisplayMode: "BEFORE" | "WITH" | "FULLSCREEN";
   timeLimitSec: number;
   points: number;
   choices: ChoiceForm[];
@@ -18,12 +22,16 @@ type QuizForm = {
   description: string;
   category: string;
   visibility: "PRIVATE" | "PUBLIC";
+  backgroundTheme: string;
+  musicTheme: string;
   questions: QuestionForm[];
 };
 
 function emptyQuestion(type: QuestionForm["type"] = "MCQ"): QuestionForm {
+  const base = { mediaUrl: null, mediaType: null, mediaDisplayMode: "WITH" as const };
   if (type === "TRUE_FALSE") {
     return {
+      ...base,
       type,
       text: "",
       timeLimitSec: 10,
@@ -36,6 +44,7 @@ function emptyQuestion(type: QuestionForm["type"] = "MCQ"): QuestionForm {
   }
   if (type === "POLL") {
     return {
+      ...base,
       type,
       text: "",
       timeLimitSec: 15,
@@ -44,6 +53,7 @@ function emptyQuestion(type: QuestionForm["type"] = "MCQ"): QuestionForm {
     };
   }
   return {
+    ...base,
     type,
     text: "",
     timeLimitSec: 20,
@@ -70,10 +80,15 @@ export default function QuizEditor({
     description: initial?.description ?? "",
     category: initial?.category ?? "",
     visibility: initial?.visibility ?? "PRIVATE",
+    backgroundTheme: initial?.backgroundTheme ?? DEFAULT_BACKGROUND_THEME,
+    musicTheme: initial?.musicTheme ?? DEFAULT_MUSIC_THEME,
     questions: initial?.questions?.length ? initial.questions : [emptyQuestion()],
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
+  const [previewingMusic, setPreviewingMusic] = useState(false);
+  const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
   function updateQuestion(index: number, patch: Partial<QuestionForm>) {
     setForm((f) => ({
@@ -145,6 +160,32 @@ export default function QuizEditor({
     updateQuestion(index, emptyQuestion(type));
   }
 
+  async function handleMediaUpload(qIndex: number, file: File) {
+    setUploadingIndex(qIndex);
+    setError(null);
+    const body = new FormData();
+    body.append("file", file);
+    const res = await fetch("/api/uploads", { method: "POST", body });
+    setUploadingIndex(null);
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      setError(errBody.error ?? "Échec de l'envoi du fichier");
+      return;
+    }
+    const { url, mediaType } = await res.json();
+    updateQuestion(qIndex, { mediaUrl: url, mediaType });
+  }
+
+  function toggleMusicPreview(themeKey: string) {
+    if (previewingMusic) {
+      musicPlayer.stop();
+      setPreviewingMusic(false);
+      return;
+    }
+    musicPlayer.play(themeKey);
+    setPreviewingMusic(true);
+  }
+
   async function handleSave() {
     setSaving(true);
     setError(null);
@@ -153,9 +194,14 @@ export default function QuizEditor({
       description: form.description || null,
       category: form.category || null,
       visibility: form.visibility,
+      backgroundTheme: form.backgroundTheme,
+      musicTheme: form.musicTheme === "none" ? null : form.musicTheme,
       questions: form.questions.map((q) => ({
         type: q.type,
         text: q.text,
+        mediaUrl: q.mediaUrl || null,
+        mediaType: q.mediaType || null,
+        mediaDisplayMode: q.mediaDisplayMode,
         timeLimitSec: q.timeLimitSec,
         points: q.points,
         choices: q.choices.map((c) => ({ text: c.text, isCorrect: c.isCorrect })),
@@ -211,6 +257,55 @@ export default function QuizEditor({
             <option value="PUBLIC">Public (bibliothèque)</option>
           </select>
         </div>
+
+        <div>
+          <p className="mb-2 text-sm text-white/70">Fond d&apos;écran pendant la partie</p>
+          <div className="flex flex-wrap gap-2">
+            {BACKGROUND_THEMES.map((theme) => (
+              <button
+                key={theme.key}
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, backgroundTheme: theme.key }))}
+                className="flex flex-col items-center gap-1 rounded-lg p-1"
+                style={{
+                  outline: form.backgroundTheme === theme.key ? `2px solid ${theme.accent}` : "2px solid transparent",
+                }}
+              >
+                <span
+                  className="h-10 w-16 rounded-md border border-white/20"
+                  style={{ background: theme.gradient }}
+                />
+                <span className="text-xs text-white/60">{theme.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex items-end gap-2">
+          <label className="flex-1 text-sm text-white/70">
+            Musique de fond
+            <select
+              className="input mt-1"
+              value={form.musicTheme}
+              onChange={(e) => {
+                musicPlayer.stop();
+                setPreviewingMusic(false);
+                setForm((f) => ({ ...f, musicTheme: e.target.value }));
+              }}
+            >
+              {MUSIC_THEMES.map((theme) => (
+                <option key={theme.key} value={theme.key}>
+                  {theme.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          {form.musicTheme !== "none" && (
+            <button type="button" onClick={() => toggleMusicPreview(form.musicTheme)} className="btn-secondary">
+              {previewingMusic ? "⏸ Stop" : "▶ Écouter"}
+            </button>
+          )}
+        </div>
       </div>
 
       {form.questions.map((q, qIndex) => (
@@ -242,6 +337,59 @@ export default function QuizEditor({
             value={q.text}
             onChange={(e) => updateQuestion(qIndex, { text: e.target.value })}
           />
+
+          <div className="space-y-2">
+            <p className="text-sm text-white/70">Image ou vidéo (optionnel)</p>
+            {q.mediaUrl ? (
+              <div className="flex items-center gap-3">
+                {q.mediaType === "VIDEO" ? (
+                  <video src={q.mediaUrl} className="h-20 rounded-md" muted />
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={q.mediaUrl} alt="" className="h-20 rounded-md object-cover" />
+                )}
+                <select
+                  className="input !w-auto"
+                  value={q.mediaDisplayMode}
+                  onChange={(e) => updateQuestion(qIndex, { mediaDisplayMode: e.target.value as QuestionForm["mediaDisplayMode"] })}
+                >
+                  <option value="BEFORE">Avant la question</option>
+                  <option value="WITH">Avec la question</option>
+                  <option value="FULLSCREEN">Plein écran</option>
+                </select>
+                <button
+                  type="button"
+                  className="btn-secondary text-red-300"
+                  onClick={() => updateQuestion(qIndex, { mediaUrl: null, mediaType: null })}
+                >
+                  Retirer
+                </button>
+              </div>
+            ) : (
+              <div>
+                <input
+                  ref={(el) => {
+                    fileInputRefs.current[qIndex] = el;
+                  }}
+                  type="file"
+                  accept="image/*,video/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) void handleMediaUpload(qIndex, file);
+                  }}
+                />
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  disabled={uploadingIndex === qIndex}
+                  onClick={() => fileInputRefs.current[qIndex]?.click()}
+                >
+                  {uploadingIndex === qIndex ? "Envoi..." : "+ Ajouter une image/vidéo"}
+                </button>
+              </div>
+            )}
+          </div>
 
           <div className="flex gap-3">
             <label className="flex flex-1 items-center gap-2 text-sm text-white/70">
@@ -322,7 +470,7 @@ export default function QuizEditor({
 
       {error && <p className="text-sm text-red-400">{error}</p>}
 
-      <div className="fixed bottom-0 left-0 right-0 border-t border-white/10 bg-[#1e0a4a]/95 p-4">
+      <div className="fixed bottom-0 left-0 right-0 border-t border-white/10 bg-[#0f2744]/95 p-4">
         <div className="mx-auto flex max-w-3xl justify-end">
           <button onClick={handleSave} className="btn-primary" disabled={saving || !form.title}>
             {saving ? "Enregistrement..." : "Enregistrer le quiz"}

@@ -50,6 +50,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
             text: q.text,
             mediaUrl: q.mediaUrl,
             mediaType: q.mediaType,
+            mediaDisplayMode: q.mediaDisplayMode,
             timeLimitSec: q.timeLimitSec,
             points: q.points,
             choices: {

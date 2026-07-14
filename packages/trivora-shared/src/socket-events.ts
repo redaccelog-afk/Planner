@@ -6,9 +6,15 @@ export type PublicQuestion = {
   text: string;
   mediaUrl?: string | null;
   mediaType?: "IMAGE" | "VIDEO" | null;
+  mediaDisplayMode?: "BEFORE" | "WITH" | "FULLSCREEN";
   timeLimitSec: number;
   choices: { id: string; text: string }[];
   startedAt: number;
+};
+
+export type QuizTheme = {
+  backgroundTheme: string;
+  musicTheme: string | null;
 };
 
 export type PublicPlayer = {
@@ -66,7 +72,7 @@ export interface ClientToServerEvents {
   "host:formTeams": (payload: { teamCount: number }) => void;
   "player:join": (
     payload: { pin: string; nickname: string },
-    ack: (result: { ok: true; playerId: string } | { ok: false; error: string }) => void
+    ack: (result: { ok: true; playerId: string; theme: QuizTheme } | { ok: false; error: string }) => void
   ) => void;
   "player:answer": (payload: {
     questionId: string;

@@ -1,6 +1,6 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import { verifyPassword } from "@trivora/shared";
+import { verifyPassword } from "@trivora/shared/server";
 import { prisma } from "./db";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({

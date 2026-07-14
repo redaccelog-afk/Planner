@@ -7,7 +7,7 @@
 }
 
 body {
-  background: radial-gradient(circle at top, #2e1065 0%, #1e0a4a 55%, #120730 100%);
+  background: radial-gradient(circle at top, #1b4f8a 0%, #0f2744 55%, #081527 100%);
   color: white;
   min-height: 100vh;
 }
@@ -20,7 +20,7 @@ body {
 }
 
 .btn-primary {
-  background: #7c3aed;
+  background: #f07d00;
   color: white;
   font-weight: 600;
   border-radius: 0.75rem;
@@ -28,7 +28,7 @@ body {
   transition: background 0.15s ease;
 }
 .btn-primary:hover {
-  background: #6d28d9;
+  background: #d96e00;
 }
 .btn-primary:disabled {
   opacity: 0.5;
@@ -59,5 +59,51 @@ body {
   color: rgba(255, 255, 255, 0.5);
 }
 .input:focus {
-  outline: 2px solid #7c3aed;
+  outline: 2px solid #f07d00;
+}
+
+/* Confetti (podium reveal) */
+.confetti-piece {
+  position: absolute;
+  top: -10px;
+  width: 8px;
+  height: 14px;
+  opacity: 0.9;
+  animation: confetti-fall linear forwards;
+}
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(110vh) rotate(540deg);
+    opacity: 0.3;
+  }
+}
+
+@keyframes pulse-suspense {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+}
+.suspense-pulse {
+  animation: pulse-suspense 0.6s ease-in-out infinite;
+}
+
+@keyframes podium-rise {
+  from {
+    transform: translateY(40px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+.podium-rise {
+  animation: podium-rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
