@@ -6,8 +6,8 @@ export default function HomePage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-10 px-4 py-16">
       <div className="text-center">
-        <div className="mb-2 flex items-center justify-center gap-2">
-          <CcelogLogo />
+        <div className="mb-4 flex items-center justify-center">
+          <CcelogLogo className="h-12" />
         </div>
         <h1 className="font-display text-5xl font-bold tracking-tight">Trivora</h1>
         <p className="mt-2 text-white/70">Des quiz en direct, tout le monde joue depuis son téléphone.</p>

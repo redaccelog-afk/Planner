@@ -9,8 +9,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <div className="min-h-screen">
       <header className="flex items-center justify-between border-b border-white/10 px-6 py-4">
-        <Link href="/dashboard" className="flex items-center gap-2 font-display text-xl font-bold">
-          <CcelogLogo />
+        <Link href="/dashboard" className="flex items-center gap-3 font-display text-xl font-bold">
+          <CcelogLogo className="h-6" />
           Trivora
         </Link>
         <nav className="flex items-center gap-4 text-sm text-white/80">
