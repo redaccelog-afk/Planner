@@ -17,6 +17,7 @@ import PodiumReveal from "@/components/PodiumReveal";
 import AnswerDistributionChart from "@/components/AnswerDistributionChart";
 import MediaRenderer from "@/components/MediaRenderer";
 import MusicToggle from "@/components/MusicToggle";
+import JoinQrCode from "@/components/JoinQrCode";
 import { toPlayerPodium, toTeamPodium } from "@/lib/leaderboard";
 import { musicPlayer } from "@/lib/musicPlayer";
 
@@ -110,10 +111,13 @@ export default function HostGame({
     content = (
       <div className="flex flex-col items-center gap-8">
         <p className="text-white/60">{quizTitle}</p>
-        <div className="card px-12 py-8 text-center">
-          <p className="text-sm uppercase tracking-widest text-white/60">Code de la partie</p>
-          <p className="font-display text-6xl font-bold tracking-widest">{pin}</p>
-          <p className="mt-2 text-white/60">Va sur trivora.app et entre ce code</p>
+        <div className="flex flex-wrap items-center justify-center gap-6">
+          <div className="card px-12 py-8 text-center">
+            <p className="text-sm uppercase tracking-widest text-white/60">Code de la partie</p>
+            <p className="font-display text-6xl font-bold tracking-widest">{pin}</p>
+            <p className="mt-2 text-white/60">Va sur trivora.app et entre ce code</p>
+          </div>
+          <JoinQrCode pin={pin} />
         </div>
 
         {teamMode && teams.length > 0 ? (

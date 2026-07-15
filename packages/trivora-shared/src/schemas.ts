@@ -5,6 +5,13 @@ export const mediaTypeSchema = z.enum(["IMAGE", "VIDEO"]);
 export const mediaDisplayModeSchema = z.enum(["BEFORE", "WITH", "FULLSCREEN"]);
 export const visibilitySchema = z.enum(["PRIVATE", "PUBLIC"]);
 
+// Accepts either a full URL or a root-relative path (e.g. "/uploads/xyz.png") —
+// uploaded media is stored as a relative path so it resolves against whichever
+// origin the client (host or player) is actually using.
+const mediaUrlSchema = z
+  .string()
+  .refine((v) => v.startsWith("/") || /^https?:\/\//.test(v), { message: "URL de média invalide" });
+
 export const choiceInputSchema = z.object({
   id: z.string().optional(),
   text: z.string().min(1).max(200),
@@ -15,7 +22,7 @@ export const questionInputSchema = z.object({
   id: z.string().optional(),
   type: questionTypeSchema.default("MCQ"),
   text: z.string().min(1).max(300),
-  mediaUrl: z.string().url().optional().nullable(),
+  mediaUrl: mediaUrlSchema.optional().nullable(),
   mediaType: mediaTypeSchema.optional().nullable(),
   mediaDisplayMode: mediaDisplayModeSchema.default("WITH"),
   timeLimitSec: z.number().int().min(5).max(120).default(20),

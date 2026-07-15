@@ -39,6 +39,9 @@ export async function POST(request: Request) {
   const bytes = Buffer.from(await file.arrayBuffer());
   await writeFile(path.join(uploadsDir, filename), bytes);
 
-  const origin = new URL(request.url).origin;
-  return NextResponse.json({ url: `${origin}/uploads/${filename}`, mediaType }, { status: 201 });
+  // Relative path on purpose: an absolute URL would bake in whatever host/IP
+  // the upload happened from (e.g. "localhost"), which breaks for players on
+  // other devices. A relative path resolves against whichever origin each
+  // client (host or player) is actually using.
+  return NextResponse.json({ url: `/uploads/${filename}`, mediaType }, { status: 201 });
 }
