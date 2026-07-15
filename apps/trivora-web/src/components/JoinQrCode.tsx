@@ -7,7 +7,10 @@ export default function JoinQrCode({ pin }: { pin: string }) {
   const [dataUrl, setDataUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    const joinUrl = `${window.location.origin}/play?pin=${pin}`;
+    // Prefer the configured network URL over window.location.origin: the host
+    // may be viewing this on "localhost", which a phone can never reach.
+    const base = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+    const joinUrl = `${base}/play?pin=${pin}`;
     QRCode.toDataURL(joinUrl, { width: 180, margin: 1, color: { dark: "#0F2744", light: "#FFFFFF" } })
       .then(setDataUrl)
       .catch(() => setDataUrl(null));
