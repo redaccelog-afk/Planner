@@ -6,7 +6,7 @@
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "outputs": [".next/**", "!.next/cache/**", "dist/**"],
-      "env": ["DATABASE_URL", "NEXTAUTH_URL", "NEXTAUTH_SECRET", "AZURE_AD_CLIENT_ID", "AZURE_AD_CLIENT_SECRET", "AZURE_AD_TENANT_ID", "REDIS_URL", "CRON_SECRET"]
+      "env": ["DATABASE_URL", "NEXTAUTH_URL", "NEXTAUTH_SECRET", "AZURE_AD_CLIENT_ID", "AZURE_AD_CLIENT_SECRET", "AZURE_AD_TENANT_ID", "REDIS_URL", "CRON_SECRET", "TRIVORA_DATABASE_URL", "TRIVORA_REALTIME_SECRET", "TRIVORA_WEB_ORIGIN", "NEXT_PUBLIC_TRIVORA_REALTIME_URL", "PORT"]
     },
     "dev": {
       "cache": false,
