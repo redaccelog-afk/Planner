@@ -154,7 +154,7 @@ function PipelineCard({
   compact?: boolean;
 }) {
   const statusCfg = STATUS_CONFIG[p.status];
-  const candidateWithDates = p.candidates.find((c) => c.status === "proposed_dates");
+  const candidateWithDates = p.candidates.find((c) => c.status === "PROPOSED_DATES");
   const proposedDates = (candidateWithDates?.proposedDates as string[] | null) ?? [];
 
   return (
@@ -223,10 +223,10 @@ function PipelineCard({
             <div key={c.id} className="flex items-center gap-2 text-xs">
               <span className="text-muted-foreground w-4 text-center font-mono">#{c.rank}</span>
               <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-                c.status === "accepted" ? "bg-emerald-400" :
-                c.status === "declined" ? "bg-red-400" :
-                c.status === "contacted" ? "bg-blue-400 animate-pulse" :
-                c.status === "proposed_dates" ? "bg-amber-400" :
+                c.status === "ACCEPTED" ? "bg-emerald-400" :
+                c.status === "DECLINED" ? "bg-red-400" :
+                c.status === "CONTACTED" ? "bg-blue-400 animate-pulse" :
+                c.status === "PROPOSED_DATES" ? "bg-amber-400" :
                 "bg-muted"
               }`} />
               <span className="text-foreground font-medium flex-1 truncate">{c.trainer.fullName}</span>

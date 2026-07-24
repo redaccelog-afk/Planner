@@ -3,7 +3,12 @@ import { auth } from "@/lib/auth";
 
 type AppRole = "ADMIN" | "PLANIFICATEUR" | "PREPARATEUR" | "COMPTABILITE" | "FORMATEUR" | "LECTEUR" | "CLIENT";
 
-type AuthOk = { session: Awaited<ReturnType<typeof auth>>; userId: string; role: AppRole };
+type AppSession = {
+  user: { id: string; email?: string | null; name?: string | null; role?: string };
+  expires: string;
+};
+
+type AuthOk = { session: AppSession; userId: string; role: AppRole };
 type AuthErr = NextResponse;
 
 export async function requireRole(allowedRoles: AppRole[]): Promise<AuthOk | AuthErr> {
@@ -18,7 +23,7 @@ export async function requireRole(allowedRoles: AppRole[]): Promise<AuthOk | Aut
     return NextResponse.json({ error: "Accès interdit" }, { status: 403 });
   }
 
-  return { session, userId, role: role as AppRole };
+  return { session: session as AppSession, userId, role: role as AppRole };
 }
 
 export function isAuthErr(v: AuthOk | AuthErr): v is AuthErr {
