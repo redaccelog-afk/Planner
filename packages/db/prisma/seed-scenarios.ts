@@ -625,7 +625,6 @@ async function main() {
   // ══════════════════════════════════════════════════════════════════
   // MODULE FORMATEURS — 4 formateurs supplémentaires
   // ══════════════════════════════════════════════════════════════════
-  const themeSST_inst  = await prisma.theme.findUnique({ where: { code: "SST" } });
   const themeIncendie  = await prisma.theme.findUnique({ where: { code: "SECURITE_INCENDIE" } });
   const themeHauteir   = await prisma.theme.findUnique({ where: { code: "TRAVAIL_HAUTEUR" } });
   const themeHabilElec = await prisma.theme.findUnique({ where: { code: "HABILITATION_ELEC" } });

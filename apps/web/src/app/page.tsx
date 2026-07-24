@@ -24,7 +24,6 @@ export default function HomePage() {
         </div>
 
         <div className="space-y-3">
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">CCE LOG</h1>
           <p className="text-xl text-muted-foreground font-medium">Planification des formations</p>
           <p className="text-sm text-muted-foreground max-w-sm mx-auto leading-relaxed">
             Gérez vos demandes de formation, planifiez les formateurs et automatisez le cycle

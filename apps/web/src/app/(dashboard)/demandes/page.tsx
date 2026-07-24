@@ -4,6 +4,7 @@ import { RefreshCw, AlertCircle, Clock, CheckCircle, XCircle, Archive, Workflow,
 import { formatDate } from "@/lib/utils";
 import { InboxSyncButton } from "@/components/demandes/inbox-sync-button";
 import { NewRequestModal } from "@/components/demandes/new-request-modal";
+import { CsvImportButton } from "@/components/csv-import-button";
 import { TriggerPipelineButton } from "@/components/demandes/trigger-pipeline-button";
 
 export const metadata = { title: "Demandes de formation" };
@@ -112,6 +113,7 @@ export default async function DemandesPage({
         </div>
         <div className="flex items-center gap-2">
           <InboxSyncButton />
+          <CsvImportButton entity="demandes" />
           <NewRequestModal clients={allClients} themes={allThemes} />
         </div>
       </div>
@@ -233,9 +235,11 @@ export default async function DemandesPage({
               </div>
 
               {/* Info principale */}
-              <Link href={`/demandes/${req.id}`} className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <p className="font-semibold text-foreground truncate">{req.client.name}</p>
+                  <Link href={`/demandes/${req.id}`} className="font-semibold text-foreground truncate hover:underline">
+                    {req.client.name}
+                  </Link>
                   {req.urgency > 0 && (
                     <span className={`text-xs font-medium ${URGENCY_COLOR[req.urgency]}`}>
                       ⚡ {URGENCY_LABEL[req.urgency]}
@@ -244,7 +248,6 @@ export default async function DemandesPage({
                   {pipeline && (
                     <Link
                       href="/pipeline"
-                      onClick={(e) => e.stopPropagation()}
                       className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-purple-500/10 text-purple-400 rounded text-[10px] border border-purple-500/20 hover:bg-purple-500/20 transition-colors"
                     >
                       <Workflow className="h-2.5 w-2.5" />
@@ -252,17 +255,19 @@ export default async function DemandesPage({
                     </Link>
                   )}
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  {req.site.city} · {req.participants} participant(s)
-                </p>
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {req.themes.map((rt) => (
-                    <span key={rt.themeId} className="px-1.5 py-0.5 bg-secondary text-xs text-muted-foreground rounded">
-                      {rt.theme.code}
-                    </span>
-                  ))}
-                </div>
-              </Link>
+                <Link href={`/demandes/${req.id}`} className="block">
+                  <p className="text-sm text-muted-foreground">
+                    {req.site.city} · {req.participants} participant(s)
+                  </p>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {req.themes.map((rt) => (
+                      <span key={rt.themeId} className="px-1.5 py-0.5 bg-secondary text-xs text-muted-foreground rounded">
+                        {rt.theme.code}
+                      </span>
+                    ))}
+                  </div>
+                </Link>
+              </div>
 
               {/* Dates souhaitées */}
               {(req.desiredDateFrom || req.desiredDateTo) && (

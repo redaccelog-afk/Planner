@@ -252,6 +252,16 @@ enum DossierStatus {
   PRET
 }
 
+enum TrainerCandidateStatus {
+  PENDING
+  CONTACTED
+  PROPOSED_DATES
+  ACCEPTED
+  DECLINED
+  SKIPPED
+  TIMEOUT
+}
+
 enum PickupType {
   BUREAU
   ARMOIRE
@@ -371,11 +381,34 @@ model Trainer {
   prestations      Prestation[]
   negotiations     NegotiationStep[]
   pipelineCandidates TrainerCandidate[]
+  legalEntities    TrainerLegalEntity[]
 
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
 
+  @@index([phone])
   @@map("trainers")
+}
+
+model TrainerLegalEntity {
+  id           String   @id @default(cuid())
+  trainerId    String
+  entityName   String?  // libellé libre, ex. "SARL Alaoui Formation"
+  legalStatus  String?  // "Auto-entrepreneur", "SARL", "SA", "Personne physique"
+  ice          String?
+  rc           String?
+  ifFiscal     String?
+  cnss         String?
+  iban         String?
+  bankName     String?
+  isDefault    Boolean  @default(false)
+
+  trainer      Trainer  @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("trainer_legal_entities")
 }
 
 model Theme {
@@ -387,13 +420,15 @@ model Theme {
   description   String?         @db.Text
   active        Boolean         @default(true)
 
-  consumableNeeds ConsumableNeed[]
-  materialNeeds   MaterialNeed[]
-  trainers        TrainerTheme[]
-  sessions        TrainingSession[]
-  requestThemes   RequestTheme[]
-  negotiations    NegotiationStep[]
-  consumables     ThemeConsumable[]
+  consumableNeeds      ConsumableNeed[]
+  materialNeeds        MaterialNeed[]
+  trainers             TrainerTheme[]
+  sessions             TrainingSession[]
+  requestThemes        RequestTheme[]
+  negotiations         NegotiationStep[]
+  consumables          ThemeConsumable[]
+  dossierItems         ThemeDossierItem[]
+  attestationTemplates AttestationTemplate[]
 
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
@@ -572,6 +607,36 @@ model ThemeConsumable {
   @@map("theme_consumables")
 }
 
+model ThemeDossierItem {
+  id         String             @id @default(cuid())
+  themeId    String
+  label      String             // ex. "Convocations participants", "Fiche de présence"
+  order      Int                @default(0)
+  required   Boolean            @default(true)
+  theme      Theme              @relation(fields: [themeId], references: [id], onDelete: Cascade)
+  checkItems DossierCheckItem[]
+  createdAt  DateTime           @default(now())
+
+  @@map("theme_dossier_items")
+}
+
+model DossierCheckItem {
+  id                String           @id @default(cuid())
+  dossierId         String
+  dossierItemId     String
+  checked           Boolean          @default(false)
+  quantityConfirmed Int              @default(1)
+
+  dossier           DossierFormation @relation(fields: [dossierId], references: [id], onDelete: Cascade)
+  dossierItem       ThemeDossierItem @relation(fields: [dossierItemId], references: [id], onDelete: Cascade)
+
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@unique([dossierId, dossierItemId])
+  @@map("dossier_check_items")
+}
+
 // ─────────────────────────────────────────────
 // DEMANDES & SESSIONS
 // ─────────────────────────────────────────────
@@ -600,6 +665,7 @@ model TrainingRequest {
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
+  @@index([clientId])
   @@map("training_requests")
 }
 
@@ -656,6 +722,8 @@ model TrainingSession {
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 
+  @@index([trainerId, startDate])
+  @@index([status])
   @@map("training_sessions")
 }
 
@@ -887,6 +955,7 @@ model Notification {
   createdAt  DateTime         @default(now())
   updatedAt  DateTime         @updatedAt
 
+  @@index([status, scheduledAt])
   @@map("notifications")
 }
 
@@ -996,9 +1065,7 @@ model TrainerCandidate {
   rank       Int     // ordre de contact : 1, 2, 3...
   score      Float?  // score matching (distance, dispo, tarif)
 
-  // Statut individuel du candidat
-  status       String   @default("pending")
-  // "pending" | "contacted" | "proposed_dates" | "accepted" | "declined" | "skipped" | "timeout"
+  status       TrainerCandidateStatus @default(PENDING)
 
   proposedDates Json?   // dates proposées par le formateur [DateTime]
   waMessageId   String? // ID du message WA envoyé au formateur
@@ -1160,7 +1227,7 @@ model Prestation {
 model Invoice {
   id              String        @id @default(cuid())
   clientId        String
-  reference       String        // "FACT-2025-001"
+  reference       String        @unique // "FACT-2025-001" — unicité garantie
   issueDate       DateTime      @default(now())
   dueDate         DateTime      // issueDate + paymentTerms
   status          InvoiceStatus @default(BROUILLON)
@@ -1257,6 +1324,7 @@ model AttestationTemplate {
   footerHtml      String?   @db.Text
   active          Boolean   @default(true)
 
+  theme           Theme?          @relation(fields: [themeId], references: [id])
   attestations    Attestation[]
 
   createdAt       DateTime  @default(now())
@@ -1319,7 +1387,7 @@ model CacesResult {
 model MissionOrder {
   id          String    @id @default(cuid())
   sessionId   String    @unique
-  numero      String    // "OM-2025-042"
+  numero      String    @unique // "OM-2025-042" — unicité garantie
   generatedAt DateTime  @default(now())
   fileUrl     String?   // PDF signé
   sentAt      DateTime? // envoyé au formateur
@@ -1386,18 +1454,19 @@ model SessionDailyLog {
 // ─────────────────────────────────────────────
 
 model DossierFormation {
-  id           String          @id @default(cuid())
-  sessionId    String          @unique
-  session      TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  status       DossierStatus   @default(EN_ATTENTE)
+  id           String             @id @default(cuid())
+  sessionId    String             @unique
+  session      TrainingSession    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  status       DossierStatus      @default(EN_ATTENTE)
   pickupType   PickupType?
   pickupDetail String?
   preparedAt   DateTime?
   preparerId   String?
-  preparer     User?           @relation("DossierPreparer", fields: [preparerId], references: [id])
-  notes        String?         @db.Text
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
+  preparer     User?              @relation("DossierPreparer", fields: [preparerId], references: [id])
+  notes        String?            @db.Text
+  checkItems   DossierCheckItem[]
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
   @@map("dossier_formations")
 }
 

@@ -2,6 +2,7 @@ import { db } from "@ccelog/db";
 import Link from "next/link";
 import { Plus, MapPin, Users, TrendingUp, Clock } from "lucide-react";
 import { formatDate, formatCurrency } from "@/lib/utils";
+import { CsvImportButton } from "@/components/csv-import-button";
 
 export const metadata = { title: "Clients" };
 
@@ -56,13 +57,16 @@ export default async function ClientsPage({
             {totalActive} actif(s) · {totalInactive} inactif(s)
           </p>
         </div>
-        <Link
-          href="/clients/nouveau"
-          className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          Nouveau client
-        </Link>
+        <div className="flex items-center gap-2">
+          <CsvImportButton entity="clients" />
+          <Link
+            href="/clients/nouveau"
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            Nouveau client
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}

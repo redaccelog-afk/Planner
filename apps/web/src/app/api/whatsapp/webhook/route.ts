@@ -22,7 +22,11 @@ export async function POST(req: Request) {
   const signature = req.headers.get("x-hub-signature-256") ?? "";
 
   // Vérifier la signature (R8 — sécurité)
-  if (process.env.WA_APP_SECRET && !verifyWebhookSignature(rawBody, signature)) {
+  // Si WA_APP_SECRET absent en production → rejeter, jamais court-circuiter
+  if (!process.env.WA_APP_SECRET) {
+    return NextResponse.json({ error: "Configuration webhook manquante" }, { status: 500 });
+  }
+  if (!verifyWebhookSignature(rawBody, signature)) {
     return NextResponse.json({ error: "Signature invalide" }, { status: 401 });
   }
 

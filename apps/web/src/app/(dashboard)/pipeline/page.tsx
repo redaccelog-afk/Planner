@@ -280,27 +280,29 @@ function PipelineActions({
         <p className="text-xs text-muted-foreground">
           Validez l'ordre de contact des formateurs puis lancez le pipeline.
         </p>
-        <form action={validateTrainersAction} className="flex gap-2">
-          <input type="hidden" name="pipelineId" value={p.id} />
-          <input
-            type="hidden"
-            name="trainerOrder"
-            value={p.candidates.map((c) => c.trainerId).join(",")}
-          />
-          <button
-            type="submit"
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-semibold hover:bg-primary/90 transition-colors"
-          >
-            <ArrowRight className="h-3.5 w-3.5" />
-            Valider et contacter formateur #1
-          </button>
+        <div className="flex gap-2">
+          <form action={validateTrainersAction} className="flex-1">
+            <input type="hidden" name="pipelineId" value={p.id} />
+            <input
+              type="hidden"
+              name="trainerOrder"
+              value={p.candidates.map((c) => c.trainerId).join(",")}
+            />
+            <button
+              type="submit"
+              className="w-full flex items-center justify-center gap-1.5 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-semibold hover:bg-primary/90 transition-colors"
+            >
+              <ArrowRight className="h-3.5 w-3.5" />
+              Valider et contacter formateur #1
+            </button>
+          </form>
           <form action={cancelPipelineAction}>
             <input type="hidden" name="pipelineId" value={p.id} />
             <button type="submit" className="px-3 py-2 text-xs text-muted-foreground hover:text-red-400 transition-colors">
               Annuler
             </button>
           </form>
-        </form>
+        </div>
       </div>
     );
   }

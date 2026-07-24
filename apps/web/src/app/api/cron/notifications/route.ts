@@ -15,9 +15,7 @@ export const maxDuration = 30
  * checks by fetching all existing refs for a session in one query.
  */
 export async function GET(req: Request) {
-  const secret =
-    req.headers.get("x-cron-secret") ??
-    new URL(req.url).searchParams.get("secret")
+  const secret = req.headers.get("x-cron-secret");
 
   if (secret !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 401 })

@@ -1,8 +1,8 @@
 import { db } from "@ccelog/db";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Clock, Users, Package, Wrench, CheckCircle, XCircle } from "lucide-react";
-import { updateThemeAction, addConsumableNeedAction, removeConsumableNeedAction, addThemeConsumableAction, removeThemeConsumableAction } from "./actions";
+import { ArrowLeft, Clock, Users, Package, Wrench, CheckCircle, XCircle, FileText, Award, Trash2 } from "lucide-react";
+import { updateThemeAction, addConsumableNeedAction, removeConsumableNeedAction, addThemeConsumableAction, removeThemeConsumableAction, addDossierItemAction, removeDossierItemAction, linkAttestationTemplateAction, unlinkAttestationTemplateAction } from "./actions";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -30,7 +30,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 export default async function ThemeDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  const [theme, allConsumables, themeConsumables] = await Promise.all([
+  const [theme, allConsumables, themeConsumables, dossierItems, linkedTemplates, allTemplates] = await Promise.all([
     db.theme.findUnique({
       where: { id },
       include: {
@@ -49,6 +49,13 @@ export default async function ThemeDetailPage({ params }: { params: Promise<{ id
     }),
     db.consumable.findMany({ orderBy: { label: "asc" }, select: { id: true, label: true, unit: true } }),
     db.themeConsumable.findMany({ where: { themeId: id }, include: { consumable: true } }),
+    db.themeDossierItem.findMany({ where: { themeId: id }, orderBy: { order: "asc" } }),
+    db.attestationTemplate.findMany({ where: { themeId: id }, orderBy: { name: "asc" } }),
+    db.attestationTemplate.findMany({
+      where: { active: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, code: true, themeId: true },
+    }),
   ]);
 
   if (!theme) notFound();
@@ -58,6 +65,9 @@ export default async function ThemeDetailPage({ params }: { params: Promise<{ id
 
   const linkedArticleIds = new Set(themeConsumables.map((tc) => tc.consumableId));
   const availableArticles = allConsumables.filter((c) => !linkedArticleIds.has(c.id));
+
+  const linkedTemplateIds = new Set(linkedTemplates.map((t) => t.id));
+  const availableTemplates = allTemplates.filter((t) => !linkedTemplateIds.has(t.id) && !t.themeId);
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -316,6 +326,146 @@ export default async function ThemeDetailPage({ params }: { params: Promise<{ id
               </div>
             ))}
           </div>
+        )}
+      </div>
+
+      {/* Checklist dossier de formation */}
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
+        <div className="flex items-center gap-2 px-6 py-4 border-b border-border">
+          <FileText className="h-4 w-4 text-muted-foreground" />
+          <h2 className="font-semibold text-foreground">Checklist dossier de formation</h2>
+          <span className="ml-auto text-xs text-muted-foreground">{dossierItems.length} item(s)</span>
+        </div>
+
+        {dossierItems.length === 0 ? (
+          <p className="text-sm text-muted-foreground px-6 py-4 text-center">
+            Aucun document défini. Ajoutez les pièces à préparer pour le dossier.
+          </p>
+        ) : (
+          <div className="divide-y divide-border">
+            {dossierItems.map((item, idx) => (
+              <div key={item.id} className="flex items-center px-6 py-3 gap-3">
+                <span className="flex-shrink-0 text-xs text-muted-foreground w-5 text-right">{idx + 1}.</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-foreground">{item.label}</p>
+                </div>
+                {item.required && (
+                  <span className="text-xs px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-400 border border-orange-500/20">
+                    Obligatoire
+                  </span>
+                )}
+                <form action={removeDossierItemAction}>
+                  <input type="hidden" name="id" value={item.id} />
+                  <input type="hidden" name="themeId" value={id} />
+                  <button
+                    type="submit"
+                    className="p-1.5 text-muted-foreground hover:text-destructive transition-colors rounded hover:bg-destructive/10"
+                    title="Supprimer"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </form>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <form action={addDossierItemAction} className="px-6 py-4 border-t border-border flex gap-3 items-end flex-wrap">
+          <input type="hidden" name="themeId" value={id} />
+          <div className="flex flex-col gap-1 flex-1 min-w-48">
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Document / tâche à préparer
+            </label>
+            <input
+              name="label"
+              type="text"
+              required
+              placeholder="ex. Convocations participants, Fiche de présence…"
+              className="h-9 rounded-lg border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Obligatoire
+            </label>
+            <select
+              name="required"
+              defaultValue="true"
+              className="h-9 rounded-lg border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="true">Oui</option>
+              <option value="false">Non</option>
+            </select>
+          </div>
+          <button
+            type="submit"
+            className="h-9 px-4 bg-secondary border border-border text-sm text-foreground rounded-lg hover:bg-secondary/70 transition-colors"
+          >
+            Ajouter
+          </button>
+        </form>
+      </div>
+
+      {/* Attestation liée au thème */}
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
+        <div className="flex items-center gap-2 px-6 py-4 border-b border-border">
+          <Award className="h-4 w-4 text-muted-foreground" />
+          <h2 className="font-semibold text-foreground">Modèle(s) d&apos;attestation</h2>
+          <span className="ml-auto text-xs text-muted-foreground">{linkedTemplates.length}</span>
+        </div>
+
+        {linkedTemplates.length === 0 ? (
+          <p className="text-sm text-muted-foreground px-6 py-4 text-center">
+            Aucun modèle d&apos;attestation lié à ce thème.
+          </p>
+        ) : (
+          <div className="divide-y divide-border">
+            {linkedTemplates.map((tpl) => (
+              <div key={tpl.id} className="flex items-center px-6 py-3 gap-4">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground">{tpl.name}</p>
+                  <code className="text-xs text-muted-foreground font-mono">{tpl.code}</code>
+                </div>
+                <form action={unlinkAttestationTemplateAction}>
+                  <input type="hidden" name="templateId" value={tpl.id} />
+                  <input type="hidden" name="themeId" value={id} />
+                  <button
+                    type="submit"
+                    className="text-xs text-destructive hover:text-destructive/80 transition-colors px-2 py-1 rounded hover:bg-destructive/10"
+                  >
+                    Délier
+                  </button>
+                </form>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {availableTemplates.length > 0 && (
+          <form action={linkAttestationTemplateAction} className="px-6 py-4 border-t border-border flex gap-3 items-end flex-wrap">
+            <input type="hidden" name="themeId" value={id} />
+            <div className="flex flex-col gap-1 flex-1 min-w-48">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Modèle d&apos;attestation
+              </label>
+              <select
+                name="templateId"
+                required
+                className="h-9 rounded-lg border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="">— Sélectionner —</option>
+                {availableTemplates.map((tpl) => (
+                  <option key={tpl.id} value={tpl.id}>{tpl.name} ({tpl.code})</option>
+                ))}
+              </select>
+            </div>
+            <button
+              type="submit"
+              className="h-9 px-4 bg-secondary border border-border text-sm text-foreground rounded-lg hover:bg-secondary/70 transition-colors"
+            >
+              Lier
+            </button>
+          </form>
         )}
       </div>
 

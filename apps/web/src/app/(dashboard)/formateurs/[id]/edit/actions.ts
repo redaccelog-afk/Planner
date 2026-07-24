@@ -4,7 +4,8 @@ import { db } from "@ccelog/db";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-export async function createTrainerAction(formData: FormData) {
+export async function updateTrainerAction(formData: FormData) {
+  const id = formData.get("id") as string;
   const type = formData.get("type") as "INTERNE" | "EXTERNE";
   const fullName = formData.get("fullName") as string;
   const phone = formData.get("phone") as string;
@@ -13,19 +14,10 @@ export async function createTrainerAction(formData: FormData) {
   const address = (formData.get("address") as string) || null;
   const notes = (formData.get("notes") as string) || null;
 
-  if (!fullName || !phone || !city || !type) return;
+  if (!id || !fullName || !phone || !city) return;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic fields per type
-  const data: Record<string, any> = {
-    type,
-    fullName,
-    phone,
-    email,
-    city,
-    address,
-    notes,
-    active: true,
-  };
+  const data: Record<string, any> = { fullName, phone, email, city, address, notes };
 
   if (type === "INTERNE") {
     data.employeeId = (formData.get("employeeId") as string) || null;
@@ -45,36 +37,13 @@ export async function createTrainerAction(formData: FormData) {
     data.paymentTerms = paymentTermsRaw ? parseInt(paymentTermsRaw, 10) : 30;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- champs conditionnels INTERNE/EXTERNE assemblés dynamiquement
-  const trainer = await db.trainer.create({ data: data as any });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await db.trainer.update({ where: { id }, data: data as any });
 
-  // Additional legal entities (extras for EXTERNE trainers)
-  if (type === "EXTERNE") {
-    const extraCountRaw = formData.get("extraEntityCount") as string;
-    const extraCount = extraCountRaw ? parseInt(extraCountRaw, 10) : 0;
-    for (let i = 0; i < extraCount; i++) {
-      const entityName = (formData.get(`extra_${i}_entityName`) as string) || null;
-      const legalStatus = (formData.get(`extra_${i}_legalStatus`) as string) || null;
-      if (!entityName && !legalStatus) continue;
-      await db.trainerLegalEntity.create({
-        data: {
-          trainerId: trainer.id,
-          entityName,
-          legalStatus,
-          ice: (formData.get(`extra_${i}_ice`) as string) || null,
-          rc: (formData.get(`extra_${i}_rc`) as string) || null,
-          ifFiscal: (formData.get(`extra_${i}_ifFiscal`) as string) || null,
-          cnss: (formData.get(`extra_${i}_cnss`) as string) || null,
-          iban: (formData.get(`extra_${i}_iban`) as string) || null,
-          bankName: (formData.get(`extra_${i}_bankName`) as string) || null,
-          isDefault: false,
-        },
-      });
-    }
-  }
-
+  revalidatePath(`/formateurs/${id}`);
   revalidatePath("/formateurs");
-  redirect(`/formateurs/${trainer.id}`);
+
+  redirect(`/formateurs/${id}`);
 }
 
 export async function addLegalEntityAction(formData: FormData) {

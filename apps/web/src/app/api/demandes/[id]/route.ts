@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@ccelog/db";
 import { auth } from "@/lib/auth";
+import { requireRole, isAuthErr } from "@/lib/api-auth";
 import { z } from "zod";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -43,8 +44,9 @@ export async function GET(_req: Request, ctx: RouteContext) {
 }
 
 export async function PATCH(req: Request, ctx: RouteContext) {
-  const authSession = await auth();
-  if (!authSession) return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+  const check = await requireRole(["ADMIN", "PLANIFICATEUR"]);
+  if (isAuthErr(check)) return check;
+  const authSession = check.session;
 
   const { id } = await ctx.params;
 

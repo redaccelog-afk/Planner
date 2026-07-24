@@ -2,12 +2,20 @@
 
 import { db } from "@ccelog/db";
 import { revalidatePath } from "next/cache";
+import { Prisma } from "@ccelog/db";
 
 export async function createTemplateAction(formData: FormData) {
   const name = formData.get("name") as string;
   const code = formData.get("code") as string;
   const nomenclature = formData.get("nomenclature") as string;
-  await db.attestationTemplate.create({ data: { name, code, nomenclature } });
+  try {
+    await db.attestationTemplate.create({ data: { name, code, nomenclature } });
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      throw new Error(`Un template avec le code "${code}" existe déjà.`);
+    }
+    throw e;
+  }
   revalidatePath("/parametres/templates");
 }
 

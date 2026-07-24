@@ -76,3 +76,54 @@ export async function removeThemeConsumableAction(id: string) {
   const item = await db.themeConsumable.delete({ where: { id } });
   revalidatePath(`/themes/${item.themeId}`);
 }
+
+export async function addDossierItemAction(formData: FormData) {
+  const themeId = formData.get("themeId") as string;
+  const label = (formData.get("label") as string)?.trim();
+  const requiredRaw = formData.get("required") as string;
+
+  if (!themeId || !label) return;
+
+  const required = requiredRaw !== "false";
+
+  const lastItem = await db.themeDossierItem.findFirst({
+    where: { themeId },
+    orderBy: { order: "desc" },
+    select: { order: true },
+  });
+  const order = (lastItem?.order ?? -1) + 1;
+
+  await db.themeDossierItem.create({ data: { themeId, label, order, required } });
+
+  revalidatePath(`/themes/${themeId}`);
+}
+
+export async function removeDossierItemAction(formData: FormData) {
+  const id = formData.get("id") as string;
+  const themeId = formData.get("themeId") as string;
+  if (!id) return;
+  await db.themeDossierItem.delete({ where: { id } });
+  revalidatePath(`/themes/${themeId}`);
+}
+
+export async function linkAttestationTemplateAction(formData: FormData) {
+  const themeId = formData.get("themeId") as string;
+  const templateId = formData.get("templateId") as string;
+  if (!themeId || !templateId) return;
+  await db.attestationTemplate.update({
+    where: { id: templateId },
+    data: { themeId },
+  });
+  revalidatePath(`/themes/${themeId}`);
+}
+
+export async function unlinkAttestationTemplateAction(formData: FormData) {
+  const templateId = formData.get("templateId") as string;
+  const themeId = formData.get("themeId") as string;
+  if (!templateId) return;
+  await db.attestationTemplate.update({
+    where: { id: templateId },
+    data: { themeId: null },
+  });
+  revalidatePath(`/themes/${themeId}`);
+}

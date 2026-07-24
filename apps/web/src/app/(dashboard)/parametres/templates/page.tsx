@@ -1,6 +1,7 @@
 import { db } from "@ccelog/db";
 import { FileText, Plus, ToggleLeft, ToggleRight } from "lucide-react";
 import { createTemplateAction, toggleTemplateAction, updateTemplateAction } from "./actions";
+import { CsvImportButton } from "@/components/csv-import-button";
 
 export const metadata = { title: "Modèles d'attestations" };
 
@@ -25,6 +26,8 @@ export default async function TemplatesPage() {
             Gérez les 30 templates paramétrables (CDC Module 6)
           </p>
         </div>
+        <div className="flex items-center gap-2">
+          <CsvImportButton entity="templates" />
         {/* "Nouveau template" opens the inline create form via details/summary */}
         <details className="group">
           <summary className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors cursor-pointer list-none">
@@ -84,6 +87,7 @@ export default async function TemplatesPage() {
             </form>
           </div>
         </details>
+        </div>
       </div>
 
       {/* Template count summary */}

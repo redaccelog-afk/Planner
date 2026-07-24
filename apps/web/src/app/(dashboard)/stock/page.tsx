@@ -3,6 +3,7 @@ import { AlertTriangle, Package, Wrench, TrendingUp, TrendingDown, Plus } from "
 import { formatDateTime } from "@/lib/utils";
 import { StockMovementForm } from "./StockMovementForm";
 import { ConsumableCreateForm } from "./ConsumableCreateForm";
+import { CsvImportButton } from "@/components/csv-import-button";
 
 export const metadata = { title: "Stock & Matériel" };
 
@@ -156,9 +157,15 @@ export default async function StockPage() {
 
       {/* Créer un article */}
       <div className="bg-card border border-border rounded-xl overflow-hidden">
-        <div className="flex items-center gap-2 px-6 py-4 border-b border-border">
-          <Plus className="h-4 w-4 text-muted-foreground" />
-          <h2 className="font-semibold text-foreground">Nouvel article consommable</h2>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+          <div className="flex items-center gap-2">
+            <Plus className="h-4 w-4 text-muted-foreground" />
+            <h2 className="font-semibold text-foreground">Nouvel article consommable</h2>
+          </div>
+          <div className="flex items-center gap-2">
+            <CsvImportButton entity="consumables" />
+            <CsvImportButton entity="materials" />
+          </div>
         </div>
         <ConsumableCreateForm notifiableUsers={notifiableUsers} />
       </div>

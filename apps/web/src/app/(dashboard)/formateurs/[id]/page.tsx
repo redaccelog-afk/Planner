@@ -54,6 +54,7 @@ export default async function FormateurDetailPage({ params }: { params: Promise<
         orderBy: { createdAt: "desc" },
         take: 5,
       },
+      legalEntities: { orderBy: { createdAt: "asc" } },
     },
   });
 
@@ -227,7 +228,7 @@ export default async function FormateurDetailPage({ params }: { params: Promise<
             {!isInterne && (
               <div className="pt-4 border-t border-border">
                 <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-3">
-                  Informations légales & bancaires
+                  Entité légale principale
                 </p>
                 <div className="grid grid-cols-2 gap-4">
                   <Field label="Statut juridique" value={trainer.legalStatus ?? "—"} />
@@ -242,6 +243,33 @@ export default async function FormateurDetailPage({ params }: { params: Promise<
                     value={trainer.paymentTerms ? `${trainer.paymentTerms} jours` : "30 jours"}
                   />
                 </div>
+              </div>
+            )}
+
+            {/* Additional legal entities */}
+            {!isInterne && trainer.legalEntities.length > 0 && (
+              <div className="pt-4 border-t border-border space-y-3">
+                <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider">
+                  Entités légales supplémentaires ({trainer.legalEntities.length})
+                </p>
+                {trainer.legalEntities.map((entity) => (
+                  <div key={entity.id} className="bg-secondary/30 rounded-lg p-3">
+                    <p className="text-sm font-medium text-foreground mb-2">
+                      {entity.entityName || "Entité sans nom"}
+                      {entity.legalStatus && (
+                        <span className="ml-2 text-xs text-amber-400 font-normal">{entity.legalStatus}</span>
+                      )}
+                    </p>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      {entity.ice && <Field label="ICE" value={entity.ice} />}
+                      {entity.rc && <Field label="RC" value={entity.rc} />}
+                      {entity.ifFiscal && <Field label="IF" value={entity.ifFiscal} />}
+                      {entity.cnss && <Field label="CNSS" value={entity.cnss} />}
+                      {entity.iban && <Field label="IBAN" value={entity.iban} className="col-span-2" />}
+                      {entity.bankName && <Field label="Banque" value={entity.bankName} />}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
 

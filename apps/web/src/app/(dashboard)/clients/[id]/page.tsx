@@ -16,6 +16,14 @@ import {
   ToggleRight,
   Trash2,
   Edit,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  CheckCircle2,
+  AlertTriangle,
+  Banknote,
+  XCircle,
 } from "lucide-react";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import {
@@ -50,12 +58,16 @@ const INVOICE_STATUS_LABELS: Record<string, { label: string; color: string }> = 
   ANNULEE: { label: "Annulée", color: "bg-secondary text-muted-foreground border-border" },
 };
 
-export default async function ClientDetailPage({ params, searchParams }: {
+export default async function ClientDetailPage({
+  params,
+  searchParams,
+}: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; year?: string }>;
 }) {
   const { id } = await params;
-  const { tab = "overview" } = await searchParams;
+  const { tab = "overview", year: yearParam } = await searchParams;
+  const year = parseInt(yearParam ?? String(new Date().getFullYear()), 10);
 
   const client = await db.client.findUnique({
     where: { id },
@@ -91,12 +103,45 @@ export default async function ClientDetailPage({ params, searchParams }: {
     (r) => r.status !== "ANNULEE" && r.status !== "CLOTUREE"
   ).length;
 
+  // Project sessions — fetched only when the projet tab is active
+  const projectSessions =
+    tab === "projet"
+      ? await db.trainingSession.findMany({
+          where: {
+            request: { clientId: id },
+            startDate: {
+              gte: new Date(year, 0, 1),
+              lt: new Date(year + 1, 0, 1),
+            },
+          },
+          include: {
+            theme: true,
+            trainer: {
+              select: { id: true, fullName: true, type: true },
+            },
+            request: { include: { site: true } },
+            prestation: { select: { totalAmount: true, status: true } },
+          },
+          orderBy: { startDate: "asc" },
+        })
+      : [];
+
+  // Invoices for the project year (for revenue side of financial summary)
+  const yearInvoices =
+    tab === "projet"
+      ? client.invoices.filter((inv) => {
+          const d = new Date(inv.issueDate);
+          return d.getFullYear() === year;
+        })
+      : [];
+
   const tabs = [
     { key: "overview", label: "Vue d'ensemble" },
     { key: "sites", label: `Sites (${client.sites.length})` },
     { key: "contacts", label: `Contacts (${client.contacts.length})` },
     { key: "demandes", label: `Demandes (${client.requests.length})` },
     { key: "factures", label: `Factures (${client.invoices.length})` },
+    { key: "projet", label: `Projet ${year}` },
   ];
 
   return (
@@ -166,11 +211,11 @@ export default async function ClientDetailPage({ params, searchParams }: {
 
       {/* Tabs */}
       <div className="border-b border-border">
-        <nav className="flex gap-1 -mb-px">
+        <nav className="flex gap-1 -mb-px overflow-x-auto">
           {tabs.map((t) => (
             <Link
               key={t.key}
-              href={`/clients/${id}?tab=${t.key}`}
+              href={`/clients/${id}?tab=${t.key}${t.key === "projet" ? `&year=${year}` : ""}`}
               className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                 tab === t.key
                   ? "border-primary text-primary"
@@ -184,20 +229,18 @@ export default async function ClientDetailPage({ params, searchParams }: {
       </div>
 
       {/* Tab Content */}
-      {tab === "overview" && (
-        <OverviewTab client={client} sessions={sessions} />
-      )}
-      {tab === "sites" && (
-        <SitesTab client={client} />
-      )}
-      {tab === "contacts" && (
-        <ContactsTab client={client} />
-      )}
-      {tab === "demandes" && (
-        <DemandesTab requests={client.requests} />
-      )}
-      {tab === "factures" && (
-        <FacturesTab invoices={client.invoices} />
+      {tab === "overview" && <OverviewTab client={client} sessions={sessions} />}
+      {tab === "sites" && <SitesTab client={client} />}
+      {tab === "contacts" && <ContactsTab client={client} />}
+      {tab === "demandes" && <DemandesTab requests={client.requests} />}
+      {tab === "factures" && <FacturesTab invoices={client.invoices} />}
+      {tab === "projet" && (
+        <ProjetTab
+          clientId={id}
+          year={year}
+          sessions={projectSessions}
+          yearInvoices={yearInvoices}
+        />
       )}
     </div>
   );
@@ -205,7 +248,15 @@ export default async function ClientDetailPage({ params, searchParams }: {
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function KpiCard({ icon, label, children }: { icon: React.ReactNode; label: string; children: React.ReactNode }) {
+function KpiCard({
+  icon,
+  label,
+  children,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="bg-card border border-border rounded-xl p-4">
       <div className="flex items-center gap-2 text-muted-foreground mb-2">
@@ -217,19 +268,410 @@ function KpiCard({ icon, label, children }: { icon: React.ReactNode; label: stri
   );
 }
 
-type ClientWithAll = NonNullable<Awaited<ReturnType<typeof db.client.findUnique<{
-  where: { id: string };
-  include: {
-    contacts: true;
-    sites: true;
-    requests: { include: { site: true } };
-    invoices: true;
-  };
-}>>>>;
+type ClientWithAll = NonNullable<
+  Awaited<
+    ReturnType<
+      typeof db.client.findUnique<{
+        where: { id: string };
+        include: {
+          contacts: true;
+          sites: true;
+          requests: { include: { site: true } };
+          invoices: true;
+        };
+      }>
+    >
+  >
+>;
 
-type SessionWithRelations = Awaited<ReturnType<typeof db.trainingSession.findMany<{
-  include: { theme: true; request: { include: { site: true } } };
-}>>>[number];
+type SessionWithRelations = Awaited<
+  ReturnType<
+    typeof db.trainingSession.findMany<{
+      include: { theme: true; request: { include: { site: true } } };
+    }>
+  >
+>[number];
+
+type ProjectSession = Awaited<
+  ReturnType<
+    typeof db.trainingSession.findMany<{
+      include: {
+        theme: true;
+        trainer: { select: { id: true; fullName: true; type: true } };
+        request: { include: { site: true } };
+        prestation: { select: { totalAmount: true; status: true } };
+      };
+    }>
+  >
+>[number];
+
+type CostBreakdown = {
+  honoraires?: number;
+  transport?: number;
+  hotel?: number;
+  perDiem?: number;
+  consommables?: number;
+  total?: number;
+};
+
+function parseCostBreakdown(json: unknown): CostBreakdown {
+  if (!json || typeof json !== "object" || Array.isArray(json)) return {};
+  return json as CostBreakdown;
+}
+
+// ── ProjetTab ─────────────────────────────────────────────────────────────────
+
+function ProjetTab({
+  clientId,
+  year,
+  sessions,
+  yearInvoices,
+}: {
+  clientId: string;
+  year: number;
+  sessions: ProjectSession[];
+  yearInvoices: ClientWithAll["invoices"];
+}) {
+  const now = new Date();
+
+  const enValidation = sessions.filter((s) => s.status === "PROVISOIRE");
+  const aVenir = sessions.filter(
+    (s) => s.status === "CONFIRMEE" && new Date(s.startDate) >= now
+  );
+  const passees = sessions.filter(
+    (s) =>
+      (s.status === "CONFIRMEE" || s.status === "TERMINEE" || s.status === "EN_COURS") &&
+      new Date(s.startDate) < now
+  );
+  const annulees = sessions.filter((s) => s.status === "ANNULEE");
+
+  // Financial totals across non-cancelled sessions
+  const activeSessions = sessions.filter((s) => s.status !== "ANNULEE");
+  const totals = activeSessions.reduce(
+    (acc, s) => {
+      const cb = parseCostBreakdown(s.costBreakdown);
+      return {
+        honoraires: acc.honoraires + (cb.honoraires ?? 0),
+        transport: acc.transport + (cb.transport ?? 0),
+        hotel: acc.hotel + (cb.hotel ?? 0),
+        perDiem: acc.perDiem + (cb.perDiem ?? 0),
+        consommables: acc.consommables + (cb.consommables ?? 0),
+        total: acc.total + (s.totalCost ?? 0),
+      };
+    },
+    { honoraires: 0, transport: 0, hotel: 0, perDiem: 0, consommables: 0, total: 0 }
+  );
+
+  const revenueHT = yearInvoices
+    .filter((inv) => inv.status !== "ANNULEE")
+    .reduce((sum, inv) => sum + inv.subtotal, 0);
+  const revenuePaye = yearInvoices
+    .filter((inv) => inv.status === "PAYEE")
+    .reduce((sum, inv) => sum + inv.total, 0);
+
+  return (
+    <div className="space-y-6">
+      {/* Year navigation */}
+      <div className="flex items-center justify-between">
+        <Link
+          href={`/clients/${clientId}?tab=projet&year=${year - 1}`}
+          className="flex items-center gap-1 px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground bg-secondary hover:bg-secondary/80 rounded-lg border border-border transition-colors"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          {year - 1}
+        </Link>
+
+        <div className="flex items-center gap-2">
+          <Calendar className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-bold text-foreground">Projet {year}</h2>
+          <span className="text-sm text-muted-foreground">
+            {activeSessions.length} session(s)
+          </span>
+        </div>
+
+        <Link
+          href={`/clients/${clientId}?tab=projet&year=${year + 1}`}
+          className="flex items-center gap-1 px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground bg-secondary hover:bg-secondary/80 rounded-lg border border-border transition-colors"
+        >
+          {year + 1}
+          <ChevronRight className="h-4 w-4" />
+        </Link>
+      </div>
+
+      {/* Project KPIs */}
+      <div className="grid gap-3 md:grid-cols-4">
+        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <Clock className="h-4 w-4 text-yellow-400" />
+            <span className="text-xs font-medium text-yellow-400 uppercase tracking-wider">En validation</span>
+          </div>
+          <p className="text-2xl font-bold text-foreground">{enValidation.length}</p>
+        </div>
+        <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <Calendar className="h-4 w-4 text-blue-400" />
+            <span className="text-xs font-medium text-blue-400 uppercase tracking-wider">À venir</span>
+          </div>
+          <p className="text-2xl font-bold text-foreground">{aVenir.length}</p>
+        </div>
+        <div className="bg-card border border-border rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Passées</span>
+          </div>
+          <p className="text-2xl font-bold text-foreground">{passees.length}</p>
+        </div>
+        <div className="bg-card border border-border rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <TrendingUp className="h-4 w-4 text-green-400" />
+            <span className="text-xs font-medium text-green-400 uppercase tracking-wider">Total charges</span>
+          </div>
+          <p className="text-xl font-bold text-foreground">{formatCurrency(totals.total)}</p>
+        </div>
+      </div>
+
+      {sessions.length === 0 && (
+        <div className="bg-card border border-border rounded-xl py-16 text-center">
+          <Calendar className="h-10 w-10 text-muted-foreground mx-auto mb-3 opacity-40" />
+          <p className="text-sm text-muted-foreground">Aucune session en {year}</p>
+          <Link
+            href={`/demandes`}
+            className="mt-3 inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
+          >
+            <Plus className="h-4 w-4" />
+            Créer une demande
+          </Link>
+        </div>
+      )}
+
+      {/* En cours de validation */}
+      {enValidation.length > 0 && (
+        <SessionSection
+          title="En cours de validation"
+          icon={<Clock className="h-4 w-4 text-yellow-400" />}
+          badge="bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
+          sessions={enValidation}
+        />
+      )}
+
+      {/* Sessions à venir */}
+      {aVenir.length > 0 && (
+        <SessionSection
+          title="Sessions à venir"
+          icon={<Calendar className="h-4 w-4 text-blue-400" />}
+          badge="bg-blue-500/20 text-blue-400 border-blue-500/30"
+          sessions={aVenir}
+        />
+      )}
+
+      {/* Sessions passées */}
+      {passees.length > 0 && (
+        <SessionSection
+          title="Sessions passées"
+          icon={<CheckCircle2 className="h-4 w-4 text-muted-foreground" />}
+          badge="bg-secondary text-muted-foreground border-border"
+          sessions={passees}
+        />
+      )}
+
+      {/* Sessions annulées */}
+      {annulees.length > 0 && (
+        <SessionSection
+          title={`Sessions annulées (${annulees.length})`}
+          icon={<XCircle className="h-4 w-4 text-red-400" />}
+          badge="bg-red-500/20 text-red-400 border-red-500/30"
+          sessions={annulees}
+          muted
+        />
+      )}
+
+      {/* Bilan financier */}
+      {activeSessions.length > 0 && (
+        <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-border flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-primary" />
+            <h3 className="font-semibold text-foreground">Bilan financier {year}</h3>
+          </div>
+          <div className="p-6 space-y-6">
+            {/* Charges */}
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
+                Charges liées aux sessions
+              </p>
+              <div className="space-y-2">
+                <CostRow label="Honoraires formateurs" value={totals.honoraires} />
+                <CostRow label="Frais de déplacement" value={totals.transport} />
+                <CostRow label="Hébergement" value={totals.hotel} />
+                <CostRow label="Per diem" value={totals.perDiem} />
+                <CostRow label="Consommables" value={totals.consommables} />
+                <div className="border-t border-border pt-2 mt-2 flex items-center justify-between">
+                  <span className="text-sm font-semibold text-foreground">Total charges</span>
+                  <span className="text-sm font-bold text-foreground">{formatCurrency(totals.total)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Facturation client */}
+            {yearInvoices.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
+                  Facturation client
+                </p>
+                <div className="space-y-2">
+                  <CostRow label="Chiffre d'affaires (HT, émis)" value={revenueHT} highlight />
+                  <CostRow label="Encaissé (TTC, payé)" value={revenuePaye} highlight />
+                  {totals.total > 0 && revenueHT > 0 && (
+                    <div className="border-t border-border pt-2 mt-2 flex items-center justify-between">
+                      <span className="text-sm font-semibold text-foreground">Marge brute estimée</span>
+                      <span
+                        className={`text-sm font-bold ${
+                          revenueHT - totals.total >= 0 ? "text-green-400" : "text-red-400"
+                        }`}
+                      >
+                        {formatCurrency(revenueHT - totals.total)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CostRow({
+  label,
+  value,
+  highlight = false,
+}: {
+  label: string;
+  value: number;
+  highlight?: boolean;
+}) {
+  if (value === 0) return null;
+  return (
+    <div className="flex items-center justify-between py-1">
+      <span className={`text-sm ${highlight ? "text-foreground" : "text-muted-foreground"}`}>
+        {label}
+      </span>
+      <span className={`text-sm font-medium ${highlight ? "text-foreground" : "text-foreground"}`}>
+        {formatCurrency(value)}
+      </span>
+    </div>
+  );
+}
+
+const SESSION_STATUS_LABELS: Record<string, string> = {
+  PROVISOIRE: "Provisoire",
+  CONFIRMEE: "Confirmée",
+  ANNULEE: "Annulée",
+  EN_COURS: "En cours",
+  TERMINEE: "Terminée",
+};
+
+function SessionSection({
+  title,
+  icon,
+  badge: _badge,
+  sessions,
+  muted = false,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  badge: string;
+  sessions: ProjectSession[];
+  muted?: boolean;
+}) {
+  return (
+    <div className={`bg-card border border-border rounded-xl overflow-hidden ${muted ? "opacity-70" : ""}`}>
+      <div className="px-6 py-3 border-b border-border flex items-center gap-2">
+        {icon}
+        <h3 className="font-semibold text-foreground text-sm">{title}</h3>
+        <span className="ml-auto text-xs text-muted-foreground">{sessions.length}</span>
+      </div>
+      <div className="divide-y divide-border">
+        {sessions.map((s) => {
+          const cb = parseCostBreakdown(s.costBreakdown);
+          const trainerName = s.trainer?.fullName ?? "—";
+          const isConfirmationPending =
+            s.status === "PROVISOIRE" && (!s.trainerConfirmed || !s.clientConfirmed);
+
+          return (
+            <Link
+              key={s.id}
+              href={`/sessions/${s.id}`}
+              className="flex items-start gap-4 px-6 py-4 hover:bg-secondary/50 transition-colors"
+            >
+              {/* Date */}
+              <div className="flex-shrink-0 text-center w-14">
+                <p className="text-xs text-muted-foreground">
+                  {new Date(s.startDate).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })}
+                </p>
+                {s.endDate && s.endDate !== s.startDate && (
+                  <p className="text-xs text-muted-foreground">
+                    → {new Date(s.endDate).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })}
+                  </p>
+                )}
+              </div>
+
+              {/* Main info */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-sm font-medium text-foreground">{s.theme.label}</p>
+                  <span className="text-xs text-muted-foreground">
+                    {SESSION_STATUS_LABELS[s.status] ?? s.status}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 mt-0.5 text-xs text-muted-foreground flex-wrap">
+                  <span className="flex items-center gap-1">
+                    <MapPin className="h-3 w-3" />
+                    {s.request.site.city} — {s.request.site.label}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Users className="h-3 w-3" />
+                    {s.request.participants} participants
+                  </span>
+                  <span>{trainerName}</span>
+                </div>
+                {isConfirmationPending && (
+                  <div className="flex items-center gap-3 mt-1 text-xs">
+                    {!s.trainerConfirmed && (
+                      <span className="text-yellow-400">⏳ Attente formateur</span>
+                    )}
+                    {!s.clientConfirmed && (
+                      <span className="text-yellow-400">⏳ Attente client</span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Cost */}
+              <div className="flex-shrink-0 text-right">
+                {(s.totalCost ?? 0) > 0 ? (
+                  <p className="text-sm font-medium text-foreground">
+                    {formatCurrency(s.totalCost ?? 0)}
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">—</p>
+                )}
+                {(cb.honoraires ?? 0) > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Formateur : {formatCurrency(cb.honoraires ?? 0)}
+                  </p>
+                )}
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Existing tabs ─────────────────────────────────────────────────────────────
 
 function OverviewTab({
   client,
@@ -262,13 +704,19 @@ function OverviewTab({
                   <span className="text-muted-foreground ml-1">— {primaryContact.role}</span>
                 )}
                 {primaryContact.email && (
-                  <a href={`mailto:${primaryContact.email}`} className="flex items-center gap-1 text-primary mt-0.5 text-xs hover:underline">
+                  <a
+                    href={`mailto:${primaryContact.email}`}
+                    className="flex items-center gap-1 text-primary mt-0.5 text-xs hover:underline"
+                  >
                     <Mail className="h-3 w-3" />
                     {primaryContact.email}
                   </a>
                 )}
                 {primaryContact.phone && (
-                  <a href={`tel:${primaryContact.phone}`} className="flex items-center gap-1 text-muted-foreground mt-0.5 text-xs hover:text-foreground">
+                  <a
+                    href={`tel:${primaryContact.phone}`}
+                    className="flex items-center gap-1 text-muted-foreground mt-0.5 text-xs hover:text-foreground"
+                  >
                     <Phone className="h-3 w-3" />
                     {primaryContact.phone}
                   </a>
@@ -291,7 +739,9 @@ function OverviewTab({
                 <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 <div>
                   <p className="text-sm font-medium text-foreground">{site.label}</p>
-                  <p className="text-xs text-muted-foreground">{site.address} — {site.city}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {site.address} — {site.city}
+                  </p>
                 </div>
               </div>
             ))}
@@ -304,10 +754,7 @@ function OverviewTab({
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <div className="px-6 py-4 border-b border-border flex items-center justify-between">
             <h2 className="font-semibold text-foreground">Dernières sessions</h2>
-            <Link
-              href="/sessions"
-              className="text-sm text-primary hover:underline font-medium"
-            >
+            <Link href="/sessions" className="text-sm text-primary hover:underline font-medium">
               Voir toutes les sessions →
             </Link>
           </div>
@@ -331,7 +778,9 @@ function OverviewTab({
                   <p className="text-sm font-medium text-foreground truncate">{s.theme.label}</p>
                   <p className="text-xs text-muted-foreground">{s.request.site.city}</p>
                 </div>
-                <p className="text-sm text-muted-foreground flex-shrink-0">{formatDate(s.startDate)}</p>
+                <p className="text-sm text-muted-foreground flex-shrink-0">
+                  {formatDate(s.startDate)}
+                </p>
               </Link>
             ))}
           </div>
@@ -457,10 +906,18 @@ function ContactsTab({ client }: { client: ClientWithAll }) {
           <table className="w-full">
             <thead>
               <tr className="border-b border-border">
-                <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Nom</th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Email</th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Téléphone</th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Rôle</th>
+                <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Nom
+                </th>
+                <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Email
+                </th>
+                <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Téléphone
+                </th>
+                <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Rôle
+                </th>
                 <th className="px-6 py-3" />
               </tr>
             </thead>
@@ -487,12 +944,8 @@ function ContactsTab({ client }: { client: ClientWithAll }) {
                       <span>—</span>
                     )}
                   </td>
-                  <td className="px-6 py-3 text-sm text-muted-foreground">
-                    {contact.phone || "—"}
-                  </td>
-                  <td className="px-6 py-3 text-sm text-muted-foreground">
-                    {contact.role || "—"}
-                  </td>
+                  <td className="px-6 py-3 text-sm text-muted-foreground">{contact.phone || "—"}</td>
+                  <td className="px-6 py-3 text-sm text-muted-foreground">{contact.role || "—"}</td>
                   <td className="px-6 py-3">
                     <div className="flex items-center justify-end gap-1">
                       {!contact.primary && (
@@ -609,10 +1062,7 @@ function DemandesTab({ requests }: { requests: ClientWithAll["requests"] }) {
     <div className="bg-card border border-border rounded-xl overflow-hidden">
       <div className="px-6 py-4 border-b border-border flex items-center justify-between">
         <h2 className="font-semibold text-foreground">Demandes de formation</h2>
-        <Link
-          href={`/demandes`}
-          className="text-sm text-primary hover:underline font-medium"
-        >
+        <Link href={`/demandes`} className="text-sm text-primary hover:underline font-medium">
           Voir toutes les demandes →
         </Link>
       </div>
@@ -678,11 +1128,21 @@ function FacturesTab({ invoices }: { invoices: ClientWithAll["invoices"] }) {
         <table className="w-full">
           <thead>
             <tr className="border-b border-border">
-              <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Référence</th>
-              <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Statut</th>
-              <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Émission</th>
-              <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Échéance</th>
-              <th className="text-right px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Montant TTC</th>
+              <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Référence
+              </th>
+              <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Statut
+              </th>
+              <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Émission
+              </th>
+              <th className="text-left px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Échéance
+              </th>
+              <th className="text-right px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Montant TTC
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">

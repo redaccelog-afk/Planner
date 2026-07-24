@@ -4,6 +4,7 @@ import { CalendarView } from "@/components/sessions/calendar-view";
 import { SessionsFilter } from "@/components/sessions/sessions-filter";
 import { CalendarDays, List, Map, Plus } from "lucide-react";
 import Link from "next/link";
+import { CsvImportButton } from "@/components/csv-import-button";
 
 export const metadata = { title: "Sessions" };
 
@@ -74,6 +75,7 @@ export default async function SessionsPage({
               </a>
             ))}
           </div>
+          <CsvImportButton entity="sessions" />
           <Link
             href="/sessions/nouveau"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"

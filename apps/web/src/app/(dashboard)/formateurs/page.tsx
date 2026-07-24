@@ -1,6 +1,7 @@
 import { db } from "@ccelog/db";
 import Link from "next/link";
 import { Plus, MapPin, Phone, Users, ArrowRight } from "lucide-react";
+import { CsvImportButton } from "@/components/csv-import-button";
 
 export const metadata = { title: "Formateurs" };
 
@@ -47,6 +48,7 @@ export default async function FormateursPage() {
               </span>
             )}
           </Link>
+          <CsvImportButton entity="formateurs" />
           <Link
             href="/formateurs/nouveau"
             className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"

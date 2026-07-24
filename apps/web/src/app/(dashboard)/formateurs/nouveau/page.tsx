@@ -2,11 +2,26 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, User, Building2 } from "lucide-react";
+import { ArrowLeft, User, Building2, Plus, Trash2 } from "lucide-react";
 import { createTrainerAction } from "./actions";
+
+type ExtraEntity = { entityName: string; legalStatus: string; ice: string; rc: string; ifFiscal: string; cnss: string; iban: string; bankName: string };
 
 export default function NouveauFormateurPage() {
   const [type, setType] = useState<"INTERNE" | "EXTERNE">("EXTERNE");
+  const [extraEntities, setExtraEntities] = useState<ExtraEntity[]>([]);
+
+  function addExtraEntity() {
+    setExtraEntities((prev) => [...prev, { entityName: "", legalStatus: "", ice: "", rc: "", ifFiscal: "", cnss: "", iban: "", bankName: "" }]);
+  }
+
+  function removeExtraEntity(index: number) {
+    setExtraEntities((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function updateExtraEntity(index: number, field: keyof ExtraEntity, value: string) {
+    setExtraEntities((prev) => prev.map((e, i) => i === index ? { ...e, [field]: value } : e));
+  }
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -110,58 +125,142 @@ export default function NouveauFormateurPage() {
 
         {/* EXTERNE fields */}
         {type === "EXTERNE" && (
-          <div className="bg-card border border-amber-500/20 rounded-xl p-6 space-y-4">
-            <h2 className="font-semibold text-foreground">
-              <span className="text-amber-400">Externe</span> — Informations légales & bancaires
-            </h2>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <FormLabel>Statut juridique</FormLabel>
-                <select
-                  name="legalStatus"
-                  className="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                >
-                  <option value="">— Choisir —</option>
-                  <option value="Auto-entrepreneur">Auto-entrepreneur</option>
-                  <option value="SARL">SARL</option>
-                  <option value="SA">SA</option>
-                  <option value="Personne physique">Personne physique</option>
-                </select>
-              </div>
-              <div>
-                <FormLabel>Tarif journalier par défaut (MAD)</FormLabel>
-                <FormInput name="defaultDayRate" type="number" min="0" step="50" placeholder="1500" />
-              </div>
-              <div>
-                <FormLabel>ICE</FormLabel>
-                <FormInput name="ice" placeholder="001234567890123" />
-              </div>
-              <div>
-                <FormLabel>Registre de Commerce (RC)</FormLabel>
-                <FormInput name="rc" placeholder="Casa-12345" />
-              </div>
-              <div>
-                <FormLabel>Identifiant Fiscal (IF)</FormLabel>
-                <FormInput name="ifFiscal" placeholder="12345678" />
-              </div>
-              <div>
-                <FormLabel>CNSS</FormLabel>
-                <FormInput name="cnss" placeholder="1234567" />
-              </div>
-              <div>
-                <FormLabel>IBAN</FormLabel>
-                <FormInput name="iban" placeholder="MA64011519000001234567890144" />
-              </div>
-              <div>
-                <FormLabel>Banque</FormLabel>
-                <FormInput name="bankName" placeholder="Attijariwafa Bank" />
-              </div>
-              <div>
-                <FormLabel>Délai de paiement (jours)</FormLabel>
-                <FormInput name="paymentTerms" type="number" min="0" defaultValue="30" />
+          <>
+            <div className="bg-card border border-amber-500/20 rounded-xl p-6 space-y-4">
+              <h2 className="font-semibold text-foreground">
+                <span className="text-amber-400">Externe</span> — Entité légale principale
+              </h2>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <FormLabel>Statut juridique</FormLabel>
+                  <select
+                    name="legalStatus"
+                    className="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  >
+                    <option value="">— Choisir —</option>
+                    <option value="Auto-entrepreneur">Auto-entrepreneur</option>
+                    <option value="SARL">SARL</option>
+                    <option value="SA">SA</option>
+                    <option value="Personne physique">Personne physique</option>
+                  </select>
+                </div>
+                <div>
+                  <FormLabel>Tarif journalier par défaut (MAD)</FormLabel>
+                  <FormInput name="defaultDayRate" type="number" min="0" step="50" placeholder="1500" />
+                </div>
+                <div>
+                  <FormLabel>ICE</FormLabel>
+                  <FormInput name="ice" placeholder="001234567890123" />
+                </div>
+                <div>
+                  <FormLabel>Registre de Commerce (RC)</FormLabel>
+                  <FormInput name="rc" placeholder="Casa-12345" />
+                </div>
+                <div>
+                  <FormLabel>Identifiant Fiscal (IF)</FormLabel>
+                  <FormInput name="ifFiscal" placeholder="12345678" />
+                </div>
+                <div>
+                  <FormLabel>CNSS</FormLabel>
+                  <FormInput name="cnss" placeholder="1234567" />
+                </div>
+                <div>
+                  <FormLabel>IBAN</FormLabel>
+                  <FormInput name="iban" placeholder="MA64011519000001234567890144" />
+                </div>
+                <div>
+                  <FormLabel>Banque</FormLabel>
+                  <FormInput name="bankName" placeholder="Attijariwafa Bank" />
+                </div>
+                <div>
+                  <FormLabel>Délai de paiement (jours)</FormLabel>
+                  <FormInput name="paymentTerms" type="number" min="0" defaultValue="30" />
+                </div>
               </div>
             </div>
-          </div>
+
+            {/* Hidden count of extra entities */}
+            <input type="hidden" name="extraEntityCount" value={extraEntities.length} />
+
+            {/* Extra legal entities */}
+            {extraEntities.map((entity, i) => (
+              <div key={i} className="bg-card border border-amber-500/10 rounded-xl p-6 space-y-4 relative">
+                <div className="flex items-center justify-between">
+                  <h2 className="font-semibold text-foreground">
+                    <span className="text-amber-400">Entité légale supplémentaire #{i + 1}</span>
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={() => removeExtraEntity(i)}
+                    className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
+                    title="Supprimer cette entité"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2">
+                    <FormLabel>Nom de l&apos;entité (libellé)</FormLabel>
+                    <input
+                      name={`extra_${i}_entityName`}
+                      value={entity.entityName}
+                      onChange={(e) => updateExtraEntity(i, "entityName", e.target.value)}
+                      placeholder="Ex: SARL Alaoui Formation"
+                      className="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    />
+                  </div>
+                  <div>
+                    <FormLabel>Statut juridique</FormLabel>
+                    <select
+                      name={`extra_${i}_legalStatus`}
+                      value={entity.legalStatus}
+                      onChange={(e) => updateExtraEntity(i, "legalStatus", e.target.value)}
+                      className="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    >
+                      <option value="">— Choisir —</option>
+                      <option value="Auto-entrepreneur">Auto-entrepreneur</option>
+                      <option value="SARL">SARL</option>
+                      <option value="SA">SA</option>
+                      <option value="Personne physique">Personne physique</option>
+                    </select>
+                  </div>
+                  <div>
+                    <FormLabel>ICE</FormLabel>
+                    <input name={`extra_${i}_ice`} value={entity.ice} onChange={(e) => updateExtraEntity(i, "ice", e.target.value)} placeholder="001234567890123" className="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                  </div>
+                  <div>
+                    <FormLabel>RC</FormLabel>
+                    <input name={`extra_${i}_rc`} value={entity.rc} onChange={(e) => updateExtraEntity(i, "rc", e.target.value)} placeholder="Casa-12345" className="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                  </div>
+                  <div>
+                    <FormLabel>IF Fiscal</FormLabel>
+                    <input name={`extra_${i}_ifFiscal`} value={entity.ifFiscal} onChange={(e) => updateExtraEntity(i, "ifFiscal", e.target.value)} placeholder="12345678" className="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                  </div>
+                  <div>
+                    <FormLabel>CNSS</FormLabel>
+                    <input name={`extra_${i}_cnss`} value={entity.cnss} onChange={(e) => updateExtraEntity(i, "cnss", e.target.value)} placeholder="1234567" className="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                  </div>
+                  <div>
+                    <FormLabel>IBAN</FormLabel>
+                    <input name={`extra_${i}_iban`} value={entity.iban} onChange={(e) => updateExtraEntity(i, "iban", e.target.value)} placeholder="MA64011519000001234567890144" className="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                  </div>
+                  <div>
+                    <FormLabel>Banque</FormLabel>
+                    <input name={`extra_${i}_bankName`} value={entity.bankName} onChange={(e) => updateExtraEntity(i, "bankName", e.target.value)} placeholder="Attijariwafa Bank" className="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            <button
+              type="button"
+              onClick={addExtraEntity}
+              className="flex items-center gap-2 px-4 py-2 border border-dashed border-amber-500/40 text-amber-400 rounded-xl text-sm hover:bg-amber-500/5 transition-colors w-full justify-center"
+            >
+              <Plus className="h-4 w-4" />
+              Ajouter une autre entité légale
+            </button>
+          </>
         )}
 
         {/* Submit */}
@@ -233,7 +332,7 @@ function FormInput({
 }
 
 function TypeCard({
-  value: _value,
+  value: _value, // eslint-disable-line @typescript-eslint/no-unused-vars
   selected,
   onSelect,
   icon,
@@ -287,6 +386,3 @@ function TypeCard({
   );
 }
 
-// Silence unused imports
-const _unused = { value: "" };
-void _unused;

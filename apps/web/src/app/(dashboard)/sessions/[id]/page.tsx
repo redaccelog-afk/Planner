@@ -59,7 +59,9 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
     TERMINEE: { label: "Terminée", icon: CheckCircle, className: "text-gray-400" },
   };
   const sc = statusConfig[session.status] ?? statusConfig["PROVISOIRE"];
-  const costBreakdown = session.costBreakdown ? JSON.parse(session.costBreakdown as string) : null;
+  const costBreakdown = session.costBreakdown
+    ? (typeof session.costBreakdown === "string" ? JSON.parse(session.costBreakdown) : session.costBreakdown)
+    : null;
 
   const isExterne = session.trainer.type === "EXTERNE";
   const hasPrestation = !!session.prestation;

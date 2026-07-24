@@ -19,15 +19,19 @@ interface TelegramUpdate {
   };
 }
 
-function verifyTelegram(req: NextRequest): boolean {
-  const secret = req.headers.get("x-telegram-bot-api-secret-token");
+function verifyTelegram(req: NextRequest): boolean | "missing_secret" {
   const expected = process.env.TELEGRAM_WEBHOOK_SECRET;
-  if (!expected) return true; // dev mode
+  if (!expected) return "missing_secret";
+  const secret = req.headers.get("x-telegram-bot-api-secret-token");
   return secret === expected;
 }
 
 export async function POST(req: NextRequest) {
-  if (!verifyTelegram(req)) {
+  const telegramCheck = verifyTelegram(req);
+  if (telegramCheck === "missing_secret") {
+    return NextResponse.json({ error: "Configuration webhook manquante" }, { status: 500 });
+  }
+  if (!telegramCheck) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

@@ -1,5 +1,6 @@
 import { db } from "@ccelog/db";
 import { Plus, Clock, Users } from "lucide-react";
+import { CsvImportButton } from "@/components/csv-import-button";
 
 export const metadata = { title: "Thèmes de formation" };
 
@@ -43,10 +44,13 @@ export default async function ThemesPage() {
           <h1 className="text-2xl font-bold text-foreground">Thèmes de formation</h1>
           <p className="text-sm text-muted-foreground mt-1">{themes.length} thème(s)</p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
-          <Plus className="h-4 w-4" />
-          Nouveau thème
-        </button>
+        <div className="flex items-center gap-2">
+          <CsvImportButton entity="themes" />
+          <button className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
+            <Plus className="h-4 w-4" />
+            Nouveau thème
+          </button>
+        </div>
       </div>
 
       {Object.entries(grouped).map(([category, categoryThemes]) => (

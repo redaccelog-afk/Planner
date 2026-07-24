@@ -4,6 +4,7 @@ import { PreselectionStatus } from "@ccelog/db";
 import { UserPlus, CheckCircle2, XCircle, Clock, Star, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { addCandidateAction, updateStatusAction } from "./actions";
+import { CsvImportButton } from "@/components/csv-import-button";
 
 export const metadata = { title: "Présélection formateurs" };
 
@@ -73,7 +74,10 @@ export default async function PreselectionPage() {
         </div>
 
         {/* Add candidate form (inline) */}
-        <AddCandidateDialog />
+        <div className="flex items-center gap-2">
+          <CsvImportButton entity="preselections" />
+          <AddCandidateDialog />
+        </div>
       </div>
 
       {/* Kanban board */}
