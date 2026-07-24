@@ -22,7 +22,6 @@ import {
   Clock,
   CheckCircle2,
   AlertTriangle,
-  Banknote,
   XCircle,
 } from "lucide-react";
 import { formatDate, formatCurrency } from "@/lib/utils";
