@@ -18,7 +18,7 @@ const providers = authConfig.providers.filter(
 
 // Comptes demo — uniquement en développement (jamais en production)
 const DEMO_ACCOUNTS =
-  process.env.NODE_ENV !== "production"
+  process.env.NODE_ENV !== "production" || process.env.ENABLE_DEMO_LOGIN === "true"
     ? [
         { email: "admin@ccelog.demo",         name: "Admin Demo",         role: "ADMIN" as const },
         { email: "planificateur@ccelog.demo", name: "Planificateur Demo", role: "PLANIFICATEUR" as const },
